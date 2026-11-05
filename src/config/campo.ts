@@ -37,7 +37,7 @@ export const MAPA = {
 
 /**
  * Coordenadas medidas sobre public/mapa-campo.png (569 × 466 px).
- * Los par están deducidos de la longitud de cada hoyo en el mapa (suman 72): revísalos.
+ * Par confirmados con la tarjeta de Montealvar (ida 36 + vuelta 36 = 72).
  * Los hoyos 4 y 11 tienen dogleg, por eso llevan los puntos del 2º y 3er golpe fijados a mano.
  */
 export const HOYOS: HoyoCampo[] = [

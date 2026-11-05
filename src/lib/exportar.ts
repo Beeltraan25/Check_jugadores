@@ -92,9 +92,24 @@ export function nombreArchivo(torneo: Torneo, sufijo: string): string {
   return `${torneo.fecha}_${base || 'torneo'}_${sufijo}.csv`;
 }
 
-/** Descarga un CSV en el navegador (con BOM para que Excel lea bien las tildes). */
-export function descargarCsv(nombre: string, contenido: string) {
-  const blob = new Blob(['﻿', contenido], { type: 'text/csv;charset=utf-8' });
+/**
+ * Guarda un CSV (con BOM para que Excel lea bien las tildes).
+ * En móvil y tablet abre el menú Compartir (correo, WhatsApp, Archivos…): en iPhone/iPad las
+ * descargas dentro de la app instalada no funcionan bien. En el ordenador, se descarga.
+ */
+export async function descargarCsv(nombre: string, contenido: string) {
+  const blob = new Blob(['\uFEFF', contenido], { type: 'text/csv;charset=utf-8' });
+  const archivo = new File([blob], nombre, { type: 'text/csv' });
+  const tactil = window.matchMedia('(pointer: coarse)').matches;
+  if (tactil && navigator.canShare?.({ files: [archivo] })) {
+    try {
+      await navigator.share({ files: [archivo], title: nombre });
+      return;
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') return; // el usuario cerró el menú
+      // Si compartir falla por otro motivo, se descarga como en el ordenador.
+    }
+  }
   const url = URL.createObjectURL(blob);
   const enlace = document.createElement('a');
   enlace.href = url;

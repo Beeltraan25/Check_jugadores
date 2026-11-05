@@ -156,6 +156,43 @@ interface EntradaCola {
   enviadaEn: number | null;
 }
 
+// --- Copia de los últimos datos, para abrir la app sin cobertura ----------------------
+
+const CLAVE_COPIA = 'ritmo-golf:copia-datos';
+const TORNEOS_EN_COPIA = 3;
+
+interface CopiaDatos {
+  torneos?: TorneoConResumen[];
+  partidas: Record<string, Partida[]>;
+}
+
+function leerCopia(): CopiaDatos {
+  try {
+    return { partidas: {}, ...(JSON.parse(localStorage.getItem(CLAVE_COPIA) ?? '{}') as Partial<CopiaDatos>) };
+  } catch {
+    return { partidas: {} };
+  }
+}
+
+function guardarCopia(cambio: (copia: CopiaDatos) => CopiaDatos) {
+  try {
+    localStorage.setItem(CLAVE_COPIA, JSON.stringify(cambio(leerCopia())));
+  } catch {
+    /* sin espacio o almacenamiento bloqueado: no pasa nada, solo no habrá copia */
+  }
+}
+
+const esFalloDeRed = (status: number) => status === 0 || status >= 500 || !navigator.onLine;
+
+/** Con cobertura muy débil no se espera más de esto a una lectura: se usa la copia. */
+const ESPERA_LECTURA_MS = 10_000;
+
+function senalConLimite(): AbortSignal {
+  const control = new AbortController();
+  window.setTimeout(() => control.abort(), ESPERA_LECTURA_MS);
+  return control.signal;
+}
+
 function leerCola(): EntradaCola[] {
   try {
     return JSON.parse(localStorage.getItem(CLAVE_COLA) ?? '[]') as EntradaCola[];
@@ -229,22 +266,53 @@ export function crearRepositorioSupabase(): Repositorio {
     modo: 'supabase',
 
     async listarTorneos() {
-      const { data, error } = await db
+      // Sin red se usa la copia al momento (si no, la librería reintenta unos segundos).
+      const copiaRapida = !navigator.onLine ? leerCopia().torneos : undefined;
+      if (copiaRapida) {
+        cambiarConexion('sin_conexion');
+        return copiaRapida;
+      }
+      const { data, error, status } = await db
         .from('torneos')
         .select('*, partidas(count)')
         .order('fecha', { ascending: false })
-        .order('creado_en', { ascending: false });
-      if (error) throw new Error(error.message);
-      return (data as (Torneo & { partidas: { count: number }[] })[]).map(torneoDesdeFila);
+        .order('creado_en', { ascending: false })
+        .abortSignal(senalConLimite());
+      if (error) {
+        const copia = esFalloDeRed(status) ? leerCopia().torneos : undefined;
+        if (!copia) throw new Error(error.message);
+        cambiarConexion('sin_conexion');
+        return copia;
+      }
+      const torneos = (data as (Torneo & { partidas: { count: number }[] })[]).map(torneoDesdeFila);
+      guardarCopia((c) => ({ ...c, torneos }));
+      return torneos;
     },
 
     async cargarTorneo(torneoId) {
-      const { data, error } = await db
+      const copiaRapida = !navigator.onLine ? leerCopia().partidas[torneoId] : undefined;
+      if (copiaRapida) {
+        cambiarConexion('sin_conexion');
+        return normalizarPartidas(copiaRapida);
+      }
+      const { data, error, status } = await db
         .from('partidas')
         .select('*, jugadores(*, alquileres(*)), avistamientos(*)')
-        .eq('torneo_id', torneoId);
-      if (error) throw new Error(error.message);
-      return normalizarPartidas((data as FilaPartida[]).map(desdeFila));
+        .eq('torneo_id', torneoId)
+        .abortSignal(senalConLimite());
+      if (error) {
+        const copia = esFalloDeRed(status) ? leerCopia().partidas[torneoId] : undefined;
+        if (!copia) throw new Error(error.message);
+        cambiarConexion('sin_conexion');
+        return normalizarPartidas(copia);
+      }
+      const partidas = normalizarPartidas((data as FilaPartida[]).map(desdeFila));
+      guardarCopia((c) => {
+        // Solo se guardan los últimos torneos abiertos en este dispositivo.
+        const otros = Object.entries(c.partidas).filter(([id]) => id !== torneoId).slice(-(TORNEOS_EN_COPIA - 1));
+        return { ...c, partidas: { ...Object.fromEntries(otros), [torneoId]: partidas } };
+      });
+      return partidas;
     },
 
     suscribir(alCambiar) {

@@ -60,7 +60,7 @@ Si el PDF es una foto escaneada (sin texto), no se puede leer: pega el texto en 
 
 ## El mapa del campo
 
-Ya está puesto el mapa del club (`public/mapa-campo.png`), con el tee y el green de cada hoyo situados en [`src/config/campo.ts`](src/config/campo.ts). Los **par** de cada hoyo están deducidos de la longitud en el mapa (suman 72): revísalos, porque deciden dónde se dibujan los pines del 2º y 3er golpe.
+Ya está puesto el mapa de Montealvar (`public/mapa-campo.png`), con el tee y el green de cada hoyo situados en [`src/config/campo.ts`](src/config/campo.ts) y los **par** de la tarjeta del campo (ida 36 + vuelta 36 = 72).
 
 Para cambiar de imagen (por ejemplo, una con más resolución):
 
@@ -77,9 +77,27 @@ En [`src/lib/ritmo.ts`](src/lib/ritmo.ts), `CONFIG_RITMO`:
 - `tramos`: qué parte del hoyo corresponde a tee, 2º golpe, 3er golpe y green.
 - `limiteVerde` (5) y `limiteRojo` (15): **verde hasta +5 min, ámbar de +6 a +14 y rojo desde +15**. `margenAdelanto` (5): más de 5 min por delante se marca "adelantado" (también verde).
 
+## En iPhone, iPad, Android y ordenador
+
+Es la misma web para todos; se adapta a cada pantalla (probada en iPhone SE, iPhone 15 Pro, iPad mini, iPad y iPad Pro en horizontal, Android y ordenador). Se puede **instalar como una app**, con su icono en la pantalla de inicio y a pantalla completa:
+
+| Dispositivo | Cómo instalarla |
+| --- | --- |
+| **iPhone / iPad** | Abre la web en Safari → botón **Compartir** (cuadrado con flecha ⬆) → **Añadir a pantalla de inicio**. |
+| **Android** | En Chrome aparece el botón **Instalar** en la pantalla de inicio de la app (o menú ⋮ → *Instalar aplicación*). |
+| **Ordenador de la oficina** | Chrome o Edge: icono de instalar en la barra de direcciones (o simplemente usarla en el navegador). |
+
+Requisitos: iOS / iPadOS 15.4 o posterior, Android con Chrome actualizado y cualquier navegador moderno en el ordenador.
+
+Detalles pensados para el móvil:
+
+- En iPhone/iPad los campos no hacen zoom al tocarlos, se respetan el notch y la barra de inicio, y los botones responden al primer toque.
+- El Excel del informe se **comparte** (correo, WhatsApp, Archivos…) en móvil y tablet, y se descarga en el ordenador.
+
 ## Sin cobertura en el campo
 
-Cada cambio del Marshal se guarda primero en el dispositivo y se envía en cuanto hay conexión. La cabecera muestra "Sin conexión" y "N sin enviar". La hora del avistamiento es la del momento del toque, aunque llegue más tarde a la oficina.
+- **Abrir la app sin red:** una vez abierta con conexión, la app queda guardada en el dispositivo (service worker, `public/sw.js`) y vuelve a abrir sin cobertura. Con Supabase, además, muestra la última copia de las partidas del torneo; la copia se borra al cerrar sesión.
+- **Apuntar sin red:** cada cambio del Marshal se guarda primero en el dispositivo y se envía en cuanto hay conexión. La cabecera muestra "Sin conexión" y "N sin enviar". La hora del avistamiento es la del momento del toque, aunque llegue más tarde a la oficina.
 
 ## Publicarlo
 

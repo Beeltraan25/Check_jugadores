@@ -34,7 +34,8 @@ const MAX_JUGADORES = 4;
 
 // Hora "08:00" en cualquier sitio (pero no "16:12:35", que es la hora de impresión),
 // o "8.00" / "8h00" solo al principio de la línea.
-const RE_HORA = /(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])/;
+// Sin "lookbehind" (?<…): Safari no lo entiende hasta iOS 16.4 y rompería toda la app.
+const RE_HORA = /(?:^|[^\d:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])/;
 const RE_HORA_INICIO = /^\s*([01]?\d|2[0-3])[.hH]([0-5]\d)(?!\d)/;
 const RE_TEE = /\b(?:tee|t|hoyo)\s*(?:del?\s*)?[:.º#nN°]*\s*(\d{1,2})\b/i;
 const RE_CABECERA_TEE = /\b(?:tee|hoyo)\s*(?:del?\s*)?[:.º#nN°]*\s*(1|10)\b/i;

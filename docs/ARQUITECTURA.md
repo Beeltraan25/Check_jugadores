@@ -31,7 +31,8 @@ flowchart LR
 | **Frontend** | React 19 + TypeScript + Vite 7 | Una sola WebApp responsiva para móvil, tablet y PC. TypeScript evita errores con los datos. Vite arranca al instante. |
 | Estilos | Tailwind CSS 4 | Diseño responsivo rápido. Tema claro de alto contraste para usarlo a pleno sol. |
 | Rutas | React Router 7 | `/marshal`, `/marshal/:id`, `/oficina`, `/calibrar`. |
-| Instalable | Web App Manifest (PWA) | Se puede "Añadir a pantalla de inicio" en la tablet y abre a pantalla completa. |
+| Instalable (PWA) | Web App Manifest + service worker propio (`public/sw.js`) | Se instala en iPhone, iPad, Android y ordenador, abre a pantalla completa y también sin cobertura. Iconos PNG para iOS (180 px) y Android (192/512 px, también *maskable*). |
+| Compatibilidad | JS compilado para Safari/iOS 15.4+, Chrome/Edge/Firefox 100+ | Sin funciones que Safari antiguo no entienda (p. ej. expresiones regulares con *lookbehind*), pdf.js en versión *legacy*. |
 | **Backend** | **Supabase** (no hace falta servidor propio) | Da hecho todo lo de servidor: API REST automática sobre las tablas, inicio de sesión, permisos (RLS) y tiempo real. La lógica del ritmo vive en un módulo TypeScript puro (`src/lib/ritmo.ts`). |
 | **BD en tiempo real** | PostgreSQL + Supabase Realtime | Cada INSERT/UPDATE/DELETE se envía al momento a todos los dispositivos conectados. |
 | Hosting | Vercel o Netlify (gratis) | Es una web estática: `npm run build` y subir `dist/`. Ya incluye `vercel.json` y `public/_redirects`. |

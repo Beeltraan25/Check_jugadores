@@ -78,7 +78,7 @@ export function FormularioPartida({ torneo, onCerrar }: { torneo: Torneo; onCerr
       <form
         onSubmit={enviar}
         onClick={(e) => e.stopPropagation()}
-        className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl"
+        className="margen-inferior-seguro max-h-[92dvh] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-t-2xl bg-white px-5 pt-5 shadow-2xl sm:rounded-2xl"
         aria-labelledby="titulo-nueva-partida"
       >
         <h2 id="titulo-nueva-partida" className="text-xl font-bold text-slate-900">

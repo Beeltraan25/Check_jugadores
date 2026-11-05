@@ -37,5 +37,11 @@ export async function iniciarSesion(email: string, contrasena: string): Promise<
 }
 
 export async function cerrarSesion() {
+  // La copia para abrir sin cobertura lleva nombres de jugadores: no se deja en el dispositivo.
+  try {
+    localStorage.removeItem('ritmo-golf:copia-datos');
+  } catch {
+    /* nada */
+  }
   await supabase?.auth.signOut();
 }

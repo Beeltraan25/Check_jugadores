@@ -86,7 +86,7 @@ export function InformeTorneo() {
             <button
               type="button"
               disabled={!partidas.length}
-              onClick={() => descargarCsv(nombreArchivo(torneo, 'partidas'), csvPartidas(torneo, partidas))}
+              onClick={() => void descargarCsv(nombreArchivo(torneo, 'partidas'), csvPartidas(torneo, partidas))}
               className="min-h-11 rounded-xl border-2 border-campo-700 bg-white px-4 font-bold text-campo-800 hover:bg-campo-50 disabled:opacity-40"
             >
               ⬇ Excel: partidas
@@ -94,7 +94,7 @@ export function InformeTorneo() {
             <button
               type="button"
               disabled={!avistamientos.length}
-              onClick={() => descargarCsv(nombreArchivo(torneo, 'tiempos'), csvAvistamientos(torneo, partidas))}
+              onClick={() => void descargarCsv(nombreArchivo(torneo, 'tiempos'), csvAvistamientos(torneo, partidas))}
               className="min-h-11 rounded-xl border-2 border-campo-700 bg-white px-4 font-bold text-campo-800 hover:bg-campo-50 disabled:opacity-40"
             >
               ⬇ Excel: tiempos

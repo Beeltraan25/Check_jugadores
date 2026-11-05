@@ -2,12 +2,22 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <!-- viewport-fit=cover: ocupa toda la pantalla del iPhone; los márgenes del notch se respetan en el CSS -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#14532d" />
     <meta name="description" content="Control del ritmo de juego del campo de golf en tiempo real." />
     <link rel="icon" type="image/svg+xml" href="/icono.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="apple-touch-icon" href="/icono.svg" />
+
+    <!-- iPhone / iPad: icono y comportamiento al "Añadir a pantalla de inicio" -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Ritmo" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- Que iOS no convierta las horas o números en enlaces de teléfono -->
+    <meta name="format-detection" content="telephone=no" />
+
     <title>Ritmo de juego</title>
   </head>
   <body>

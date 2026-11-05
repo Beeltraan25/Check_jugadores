@@ -4,12 +4,13 @@ import { cerrarSesion } from '../datos/sesion';
 import { MAPA } from '../config/campo';
 import { duracionVueltaMin, CONFIG_RITMO } from '../lib/ritmo';
 import { fechaLarga } from '../lib/textos';
+import { InstalarApp } from '../componentes/InstalarApp';
 
 export function Inicio() {
   const { torneo, numPartidas } = useDatos();
   const vuelta = duracionVueltaMin();
   return (
-    <main className="mx-auto flex min-h-dvh max-w-4xl flex-col justify-center gap-6 px-4 py-10">
+    <main className="mx-auto flex min-h-dvh max-w-4xl flex-col justify-center gap-6 px-4 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))]">
       <header className="text-center">
         <img src="/icono.svg" alt="" className="mx-auto mb-4 h-16 w-16" />
         <h1 className="text-3xl font-black tracking-tight text-campo-900 sm:text-4xl">Ritmo de juego</h1>
@@ -63,6 +64,8 @@ export function Inicio() {
           <p className="mt-1 text-slate-600">En la oficina: mapa del campo en directo, estado de todas las partidas y alta de salidas.</p>
         </Link>
       </div>
+
+      <InstalarApp />
 
       {modoDatos === 'demo' ? (
         <aside className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">

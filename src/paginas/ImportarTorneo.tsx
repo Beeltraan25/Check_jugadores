@@ -237,7 +237,7 @@ export function ImportarTorneo() {
       </main>
 
       {filas && filasValidas.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
+        <div className="margen-inferior-seguro fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 pt-3 backdrop-blur">
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
             <p className="text-sm text-slate-600">
               <strong>{filasValidas.length}</strong> partidas · <strong>{totalJugadores}</strong> jugadores
