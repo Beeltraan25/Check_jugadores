@@ -1,0 +1,63 @@
+@import 'tailwindcss';
+
+/* Tema claro y de alto contraste: el Marshal usa la tablet a pleno sol. */
+@theme {
+  --color-campo-50: #f0f7f1;
+  --color-campo-100: #dcefe0;
+  --color-campo-200: #b9dfc2;
+  --color-campo-600: #1f7a3d;
+  --color-campo-700: #176332;
+  --color-campo-800: #14532d;
+  --color-campo-900: #0f3d22;
+  --color-fondo: #f6f7f4;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-fondo);
+  color: #1c2420;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+/* Números con ancho fijo para relojes y horas (no "bailan" al cambiar). */
+.cifras {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Destello amarillo cuando llega un cambio en tiempo real. */
+@keyframes destello {
+  0% {
+    background-color: #fef3c7;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.destello {
+  animation: destello 3.5s ease-out;
+}
+
+/* Pulso del pin seleccionado o recién movido en el mapa. */
+@keyframes pulso {
+  0% {
+    box-shadow: 0 0 0 0 rgb(250 204 21 / 0.9);
+  }
+  100% {
+    box-shadow: 0 0 0 14px rgb(250 204 21 / 0);
+  }
+}
+.pulso {
+  animation: pulso 1.2s ease-out 3;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .destello,
+  .pulso {
+    animation: none;
+  }
+}

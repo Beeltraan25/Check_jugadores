@@ -1,0 +1,82 @@
+# ⛳ Ritmo de juego
+
+WebApp para controlar el ritmo de juego de un campo de golf en tiempo real.
+
+- **Marshal** (móvil o tablet, en el campo): empieza la revisión de una partida, toca el hoyo y la posición (tee, 2º golpe, 3er golpe, green) y la app guarda la hora exacta y le dice al momento si van **en tiempo (verde)** o **lentos (ámbar/rojo)**. También apunta alquileres (carro eléctrico o buggy con su nº) y observaciones.
+- **Caddy Master** (ordenador, en la oficina): ve en directo un **mapa del campo con un pin por partida**, indicadores del día, la lista de partidas y da de alta las salidas.
+
+Regla de ritmo: **15 minutos por hoyo** desde la hora de salida (salida 10:00 → hoyo 1 terminado a las 10:15, hoyo 2 a las 10:30…). Admite salidas por el tee del 1 y del 10.
+
+📐 Arquitectura, base de datos y lógica del cálculo explicadas en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
+
+## Probarlo en 1 minuto (modo demo, sin base de datos)
+
+Necesitas [Node.js](https://nodejs.org) 22 o superior.
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+Abre http://localhost:5173. Sin configurar Supabase, la app arranca en **modo demo** con partidas de prueba generadas alrededor de la hora actual. Abre `/oficina` en una pestaña y `/marshal` en otra: lo que registres como Marshal aparece al instante en la oficina.
+
+Para probarlo en el móvil dentro de tu red WiFi: `npm run dev -- --host` y abre la IP que aparece. (En modo demo cada dispositivo tiene sus propios datos. Para compartirlos entre dispositivos, conecta Supabase.)
+
+## Conectar Supabase (tiempo real entre dispositivos)
+
+1. Crea un proyecto gratis en [supabase.com](https://supabase.com).
+2. **SQL Editor → New query**: pega el contenido de [`supabase/schema.sql`](supabase/schema.sql) y pulsa **Run**. Opcional: ejecuta también [`supabase/datos-prueba.sql`](supabase/datos-prueba.sql).
+3. **Authentication → Users → Add user**: crea una cuenta para cada Marshal y para la oficina (email + contraseña). Si quieres que se vea el nombre en el historial, añade `{"nombre": "Marshal Juan"}` en *User metadata*.
+4. **Project Settings → API**: copia la URL y la clave pública (*anon* o *publishable*).
+5. En la carpeta del proyecto copia `.env.example` como `.env.local` y rellénalo:
+
+   ```
+   VITE_SUPABASE_URL=https://xxxx.supabase.co
+   VITE_SUPABASE_ANON_KEY=tu-clave-publica
+   ```
+
+6. Reinicia `npm run dev`. Ahora la app pide iniciar sesión y todo se sincroniza en tiempo real entre todos los dispositivos.
+
+> La clave pública puede ir en la web sin problema: la seguridad la ponen las políticas RLS del `schema.sql` (solo el personal con sesión iniciada puede leer y escribir). **Nunca** pongas la clave `service_role` en el frontend.
+
+## Poner el mapa de tu campo
+
+1. Copia la imagen en `public/` (p. ej. `public/mapa-campo.jpg`).
+2. En [`src/config/campo.ts`](src/config/campo.ts) cambia `MAPA.url` a `'/mapa-campo.jpg'` y el nombre del club.
+3. Abre la app en **`/calibrar`**: haz clic en el tee y en el green de cada hoyo, en orden. Al acabar, copia el código que te genera y sustituye el array `HOYOS` de `campo.ts`. Revisa también el **par** de cada hoyo.
+
+Los puntos del 2º y 3er golpe se calculan solos entre el tee y el green según el par. En hoyos con dogleg puedes fijarlos a mano con `segundo` y `tercero`.
+
+## Ajustar el ritmo
+
+En [`src/lib/ritmo.ts`](src/lib/ritmo.ts), `CONFIG_RITMO`:
+
+- `minutosPorHoyo`: 15 en todos los hoyos (puedes poner, por ejemplo, 12 en los par 3 y 17 en los par 5).
+- `tramos`: qué parte del hoyo corresponde a tee, 2º golpe, 3er golpe y green.
+- `tolerancia` (2 min) y `umbralRetraso` (5 min): límites entre verde, ámbar y rojo.
+
+## Sin cobertura en el campo
+
+Cada cambio del Marshal se guarda primero en el dispositivo y se envía en cuanto hay conexión. La cabecera muestra "Sin conexión" y "N sin enviar". La hora del avistamiento es la del momento del toque, aunque llegue más tarde a la oficina.
+
+## Publicarlo
+
+Es una web estática:
+
+```bash
+npm run build
+```
+
+Sube la carpeta `dist/` a [Vercel](https://vercel.com) o [Netlify](https://netlify.com) (importando el repositorio se detecta solo; ya incluye `vercel.json` y `public/_redirects`). Añade allí las dos variables `VITE_SUPABASE_…`. En la tablet, abre la web y usa **"Añadir a pantalla de inicio"** para tenerla como una app.
+
+## Scripts
+
+| Comando | Qué hace |
+| --- | --- |
+| `npm run dev` | Servidor de desarrollo |
+| `npm test` | Tests de la lógica del ritmo y de las operaciones |
+| `npm run typecheck` | Comprobación de tipos |
+| `npm run build` | Versión para publicar en `dist/` |

@@ -1,0 +1,11 @@
+{
+  "name": "Ritmo de juego",
+  "short_name": "Ritmo",
+  "description": "Control del ritmo de juego del campo de golf en tiempo real.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f7f4",
+  "theme_color": "#14532d",
+  "lang": "es",
+  "icons": [{ "src": "/icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}
