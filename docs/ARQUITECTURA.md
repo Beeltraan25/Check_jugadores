@@ -154,16 +154,18 @@ retraso      = vistoEn − ventana.hasta    si les ves DESPUÉS de la ventana (v
              = 0                          si les ves dentro de la ventana
 ```
 
-"Hoyos jugados antes" tiene en cuenta salir por el tee del 10: para ellos el hoyo 1 es el décimo que juegan, así que su ventana empieza 135 min después de la salida.
+"Hoyos jugados antes" tiene en cuenta el tee por el que salen: saliendo por el 10, el hoyo 1 es el décimo que juegan y su ventana empieza 135 min después de la salida. Lo mismo vale para las salidas a tiro (cada partida por un tee del 1 al 18): saliendo por el 4, el último hoyo que juegan es el 3.
 
-**Clasificación** (umbrales en `CONFIG_RITMO`, fáciles de cambiar):
+**Clasificación** (límites en `CONFIG_RITMO`: `limiteVerde`, `limiteRojo` y `margenAdelanto`). Se usan los minutos enteros que se ven en pantalla, así "+15 min" es siempre rojo:
 
 | Retraso | Estado | Color |
 | --- | --- | --- |
-| menos de −2 min | Adelantado | 🟢 verde |
-| de −2 a +2 min | En tiempo | 🟢 verde |
-| de +2 a +5 min | Atención | 🟠 ámbar |
-| más de +5 min | Retrasado | 🔴 rojo |
+| más de 5 min por delante | Adelantado | 🟢 verde |
+| de −5 a +5 min | En tiempo | 🟢 verde |
+| de +6 a +14 min | Atención | 🟠 ámbar |
+| desde +15 min | Retrasado | 🔴 rojo |
+
+El color de lo ya registrado se recalcula al cargar con los límites actuales, así que si se cambian también se actualizan los avistamientos antiguos.
 
 **Código de la función principal:**
 
@@ -184,8 +186,9 @@ Ejemplos (salida 10:00 por el tee del 1):
 | Les ves en… | a las… | Ventana ideal | Resultado |
 | --- | --- | --- | --- |
 | Green del 1 | 10:15 | 10:11 – 10:15 | 0 min → 🟢 En tiempo |
-| Tee del 1 | 10:10 | 10:00 – 10:03:45 | +6,3 min → 🔴 Retrasado |
-| Green del 1 | 10:19 | 10:11 – 10:15 | +4 min → 🟠 Atención |
+| Green del 1 | 10:19 | 10:11 – 10:15 | +4 min → 🟢 En tiempo |
+| Tee del 1 | 10:10 | 10:00 – 10:03:45 | +6,3 min → 🟠 Atención |
+| Green del 1 | 10:30 | 10:11 – 10:15 | +15 min → 🔴 Retrasado |
 | Tee del 3 | 10:20 | 10:30 – 10:33 | −10 min → 🟢 Adelantado |
 
 Además, `posicionEsperada(salida, ahora)` dice dónde *debería* estar cada partida ahora mismo. La oficina lo muestra ("Deberían ir por el H7") y el mapa dibuja un círculo discontinuo en ese punto al seleccionar una partida.
@@ -214,7 +217,7 @@ sequenceDiagram
 ### Piezas clave
 
 - **`src/datos/operaciones.ts`**: todo cambio es una *operación* (`crear_torneo`, `registrar_avistamiento`, `asignar_alquiler`…). La función `aplicarOperacion` es pura e idempotente.
-- **`src/lib/pdf.ts`** + **`src/lib/importar.ts`**: pdf.js saca el texto del PDF línea a línea (respetando los huecos entre columnas) y el intérprete reconoce horas, tee (columna, "Tee 10" o cabecera "SALIDAS POR EL TEE 10") y nombres, descartando licencias, hándicaps, clubes y categorías. Agrupa en una partida los jugadores con la misma hora y tee. Siempre se revisa en pantalla antes de guardar.
+- **`src/lib/pdf.ts`** + **`src/lib/lineasPdf.ts`** + **`src/lib/importar.ts`**: pdf.js (versión *legacy*, para navegadores no tan nuevos) saca los trozos de texto con su posición; `lineasPdf` los convierte en líneas y, si la página tiene varias columnas de partidas en paralelo (horarios de salida a tiro con dos listas lado a lado), lee cada columna por separado. El intérprete reconoce horas, tee ("TEE: 4", columna, "Tee 10" o cabecera "SALIDAS POR EL TEE 10"), nombres (también cortados o sin coma), la fecha del torneo (no la de impresión del listado) y el título. Probado con el horario real de la Copa Corporate (28 partidas, 109 jugadores). Siempre se revisa en pantalla antes de guardar.
 - **`src/lib/exportar.ts`**: CSV para Excel (separador `;`, coma decimal y BOM para las tildes).
 - **`src/datos/supabase.ts`**: lee el torneo en uso con una sola consulta anidada (`partidas` + `jugadores` + `alquileres` + `avistamientos`), escucha los cambios de las 5 tablas por Realtime y envía las operaciones mediante una **cola offline** guardada en el dispositivo. Mientras una operación no se ha enviado, la pantalla ya la muestra aplicada.
 - **`src/datos/demo.ts`**: misma interfaz pero sin servidor (localStorage + BroadcastChannel). Sirve para probar la app sin configurar nada.
@@ -233,6 +236,7 @@ src/
 │   ├── partidas.ts          ← estado actual de una partida, búsqueda, avisos de alquiler
 │   ├── importar.ts          ← interpreta el horario de salidas (+ tests)
 │   ├── pdf.ts               ← saca el texto del PDF (pdf.js)
+│   ├── lineasPdf.ts         ← líneas y columnas de la página (+ tests)
 │   ├── exportar.ts          ← CSV para Excel (+ tests)
 │   ├── hora.ts, ids.ts, textos.ts
 ├── datos/

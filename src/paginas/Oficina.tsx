@@ -25,7 +25,8 @@ import {
   tituloPartida,
   type ResumenPartida,
 } from '../lib/partidas';
-import { NOMBRE_POSICION, textoRetraso } from '../lib/ritmo';
+import { NOMBRE_POSICION, clasificarRetraso, textoRetraso } from '../lib/ritmo';
+import { estiloDe } from '../componentes/estilos';
 
 type Filtro = 'activas' | 'en_tiempo' | 'aviso' | 'retrasado' | 'sin_ver' | 'por_salir' | 'terminadas' | 'todas';
 
@@ -124,7 +125,7 @@ export function Oficina() {
           <Indicador
             titulo="Retraso medio"
             valor={retrasoMedio === null ? '—' : textoRetraso(retrasoMedio)}
-            color={retrasoMedio !== null && retrasoMedio > 2 ? 'text-red-700' : 'text-emerald-700'}
+            color={retrasoMedio === null ? 'text-slate-900' : estiloDe(clasificarRetraso(retrasoMedio)).texto}
           />
         </div>
 

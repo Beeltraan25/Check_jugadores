@@ -109,7 +109,7 @@ export function InformeTorneo() {
           <Dato
             titulo="Retraso medio"
             valor={retrasoMedio === null ? '—' : textoRetraso(retrasoMedio)}
-            color={retrasoMedio !== null && retrasoMedio > CONFIG_RITMO.tolerancia ? 'text-red-700' : 'text-emerald-700'}
+            color={retrasoMedio === null ? 'text-slate-900' : estiloDe(clasificarRetraso(retrasoMedio)).texto}
           />
           <Dato titulo="Llegaron a rojo" valor={enRojo} color={enRojo ? 'text-red-700' : 'text-slate-900'} />
           <Dato titulo="Buggies · carros" valor={`${buggies} · ${carros}`} />
@@ -121,8 +121,7 @@ export function InformeTorneo() {
           ) : (
             <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 lg:grid-cols-9">
               {porHoyo.map(({ hoyo, n, media }) => {
-                // Se clasifica el valor redondeado para que color y número cuadren.
-                const estilo = media === null ? null : estiloDe(clasificarRetraso(Math.round(media)));
+                const estilo = media === null ? null : estiloDe(clasificarRetraso(media));
                 return (
                   <li
                     key={hoyo}

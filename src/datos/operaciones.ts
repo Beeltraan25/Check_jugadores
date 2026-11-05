@@ -8,6 +8,7 @@
  * Las operaciones son idempotentes (aplicarlas dos veces da lo mismo), por eso se pueden
  * reintentar sin miedo a duplicar datos.
  */
+import { clasificarRetraso } from '../lib/ritmo';
 import type { Alquiler, Avistamiento, Partida, Torneo } from './tipos';
 
 /** Lo que la app tiene cargado: la lista de torneos y las partidas del torneo en uso. */
@@ -36,12 +37,18 @@ const porHoraVisto = (a: Avistamiento, b: Avistamiento) => a.visto_en.localeComp
 /** Más recientes primero: por fecha y, a igual fecha, por cuándo se crearon. */
 const porFechaDesc = (a: Torneo, b: Torneo) => b.fecha.localeCompare(a.fecha) || b.creado_en.localeCompare(a.creado_en);
 
-/** Ordena partidas por hora de salida, jugadores por orden y avistamientos por hora. */
+/**
+ * Ordena partidas por hora de salida, jugadores por orden y avistamientos por hora.
+ * El color (estado) de cada avistamiento se recalcula con los límites actuales, así un
+ * cambio de límites (p. ej. verde hasta 5 min) se aplica también a lo ya registrado.
+ */
 export function normalizarPartidas(partidas: Partida[]): Partida[] {
   return [...partidas].sort(porHoraSalida).map((p) => ({
     ...p,
     jugadores: [...p.jugadores].sort((a, b) => a.orden - b.orden),
-    avistamientos: [...p.avistamientos].sort(porHoraVisto),
+    avistamientos: [...p.avistamientos]
+      .sort(porHoraVisto)
+      .map((a) => ({ ...a, estado: clasificarRetraso(a.retraso_min) })),
   }));
 }
 

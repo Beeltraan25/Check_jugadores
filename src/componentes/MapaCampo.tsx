@@ -7,7 +7,7 @@ import { MAPA, puntoEnMapa, type Punto } from '../config/campo';
 import type { Partida } from '../datos/tipos';
 import { haceCuanto, hhmm, minutosEntre } from '../lib/hora';
 import { etiquetaPartida, resumirPartida, salidaDe, tituloPartida } from '../lib/partidas';
-import { NOMBRE_POSICION, posicionEsperada, textoRetraso } from '../lib/ritmo';
+import { CONFIG_RITMO, NOMBRE_POSICION, posicionEsperada, textoRetraso } from '../lib/ritmo';
 import { ESTADO_UI, estiloDe } from './estilos';
 
 /** Pasados estos minutos sin ver a una partida, su pin se dibuja más apagado. */
@@ -127,13 +127,18 @@ export function MapaCampo({ partidas, ahora, seleccionada, onSeleccionar, onClic
 }
 
 export function LeyendaMapa() {
-  const elementos = [ESTADO_UI.en_tiempo, ESTADO_UI.aviso, ESTADO_UI.retrasado];
+  const { limiteVerde, limiteRojo } = CONFIG_RITMO;
+  const elementos = [
+    { color: ESTADO_UI.en_tiempo.color, texto: `En tiempo (hasta +${limiteVerde} min)` },
+    { color: ESTADO_UI.aviso.color, texto: `Atención (+${limiteVerde + 1} a +${limiteRojo - 1} min)` },
+    { color: ESTADO_UI.retrasado.color, texto: `Retrasado (desde +${limiteRojo} min)` },
+  ];
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
       {elementos.map((e) => (
-        <span key={e.etiqueta} className="inline-flex items-center gap-1.5">
+        <span key={e.texto} className="inline-flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-full" style={{ background: e.color }} />
-          {e.etiqueta === 'En tiempo' ? 'En tiempo / adelantado' : e.etiqueta}
+          {e.texto}
         </span>
       ))}
       <span className="inline-flex items-center gap-1.5">

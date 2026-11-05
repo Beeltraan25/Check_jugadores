@@ -29,10 +29,12 @@ export interface ResultadoImportacion {
   ignoradas: string[];
 }
 
-const MAX_JUGADORES = 5;
+/** En golf una partida tiene como mucho 4 jugadores. */
+const MAX_JUGADORES = 4;
 
-// Hora "08:00" en cualquier sitio, o "8.00" / "8h00" solo al principio de la línea.
-const RE_HORA = /(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?!\d)/;
+// Hora "08:00" en cualquier sitio (pero no "16:12:35", que es la hora de impresión),
+// o "8.00" / "8h00" solo al principio de la línea.
+const RE_HORA = /(?<![\d:])([01]?\d|2[0-3]):([0-5]\d)(?![\d:])/;
 const RE_HORA_INICIO = /^\s*([01]?\d|2[0-3])[.hH]([0-5]\d)(?!\d)/;
 const RE_TEE = /\b(?:tee|t|hoyo)\s*(?:del?\s*)?[:.º#nN°]*\s*(\d{1,2})\b/i;
 const RE_CABECERA_TEE = /\b(?:tee|hoyo)\s*(?:del?\s*)?[:.º#nN°]*\s*(1|10)\b/i;
@@ -44,8 +46,8 @@ const PALABRAS_NO_NOMBRE = new Set(
     'licencia', 'lic', 'hcp', 'hcpe', 'hándicap', 'handicap', 'exacto', 'juego', 'club', 'clubs', 'categoría', 'categoria',
     'cat', 'nivel', 'partida', 'grupo', 'barras', 'orden', 'página', 'pagina', 'fecha', 'torneo', 'prueba', 'ronda',
     'modalidad', 'stableford', 'medal', 'scratch', 'caballeros', 'damas', 'senior', 'seniors', 'junior', 'juniors',
-    'infantil', 'cadete', 'alevín', 'alevin', 'benjamín', 'benjamin', 'masculino', 'femenino', 'masc', 'fem',
-    'amarillas', 'rojas', 'blancas', 'azules', 'naranjas', 'verdes', 'hombres', 'mujeres', 'independiente', 'ind',
+    'infantil', 'cadete', 'alevín', 'alevin', 'masculino', 'femenino', 'masc', 'fem',
+    'amarillas', 'blancas', 'azules', 'naranjas', 'hombres', 'mujeres', 'independiente', 'ind',
     'golf', 'c.g.', 'r.c.g.', 'rcg', 'cg', 'cc', 'c.c.', 'country', 'sociedad', 'asociación', 'asociacion',
     'federación', 'federacion', 'rfeg', 'total', 'resultado', 'resultados', 'clasificación', 'clasificacion', 'equipo',
   ].map((p) => p.toLowerCase()),
@@ -60,22 +62,33 @@ const MESES: Record<string, number> = {
 
 const dosCifras = (n: number) => String(n).padStart(2, '0');
 
-/** Busca una fecha (05/11/2026, 5-11-26 o "5 de noviembre de 2026") y la devuelve como AAAA-MM-DD. */
+/**
+ * Busca la fecha del torneo (05/11/2026, 5-11-26, 01.11.2026 o "5 de noviembre de 2026") y la
+ * devuelve como AAAA-MM-DD. Si hay varias, gana la que va detrás de "Fecha" y se descartan
+ * las de impresión del listado ("Fecha Listado: 31/10/2026").
+ */
 export function detectarFecha(texto: string): string | null {
-  const numerica = texto.match(/\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4}|\d{2})\b/);
-  if (numerica) {
-    const [, d, m, a] = numerica;
+  const candidatas: { fecha: string; peso: number; posicion: number }[] = [];
+  const pesoSegun = (posicion: number) => {
+    const inicioLinea = texto.lastIndexOf('\n', posicion) + 1;
+    const antes = texto.slice(Math.max(inicioLinea, posicion - 30), posicion);
+    if (/listado|impres|emisi[oó]n|generad|actualizad/i.test(antes)) return 0;
+    return /fecha/i.test(antes) ? 2 : 1;
+  };
+
+  for (const m of texto.matchAll(/\b(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4}|\d{2})\b/g)) {
+    const [, d, mes, a] = m;
     const anio = a.length === 2 ? 2000 + Number(a) : Number(a);
-    if (Number(m) >= 1 && Number(m) <= 12 && Number(d) >= 1 && Number(d) <= 31) {
-      return `${anio}-${dosCifras(Number(m))}-${dosCifras(Number(d))}`;
-    }
+    if (Number(mes) < 1 || Number(mes) > 12 || Number(d) < 1 || Number(d) > 31) continue;
+    candidatas.push({ fecha: `${anio}-${dosCifras(Number(mes))}-${dosCifras(Number(d))}`, peso: pesoSegun(m.index), posicion: m.index });
   }
-  const larga = texto.match(/\b(\d{1,2})\s+de\s+([a-záéíóú]+)\s+(?:de\s+|del\s+)?(\d{4})\b/i);
-  if (larga) {
-    const mes = MESES[larga[2].toLowerCase()];
-    if (mes) return `${larga[3]}-${dosCifras(mes)}-${dosCifras(Number(larga[1]))}`;
+  for (const m of texto.matchAll(/\b(\d{1,2})\s+de\s+([a-záéíóú]+)\s+(?:de\s+|del\s+)?(\d{4})\b/gi)) {
+    const mes = MESES[m[2].toLowerCase()];
+    if (!mes) continue;
+    candidatas.push({ fecha: `${m[3]}-${dosCifras(mes)}-${dosCifras(Number(m[1]))}`, peso: pesoSegun(m.index), posicion: m.index });
   }
-  return null;
+  const validas = candidatas.filter((c) => c.peso > 0).sort((a, b) => b.peso - a.peso || a.posicion - b.posicion);
+  return validas[0]?.fecha ?? null;
 }
 
 /** "GARCIA LOPEZ, JUAN" → "Garcia Lopez, Juan". Si ya viene en minúsculas/mixto, se deja igual. */
@@ -182,18 +195,27 @@ function analizarLinea(linea: string): LineaAnalizada {
   };
 }
 
-/** Primera línea con pinta de título (sin hora, sin ser cabecera de tabla). */
+const RE_TITULO = /\b(torneo|copa|trofeo|campeonato|open|liga|memorial|premio|circuito|pro-?am|match|social|ranking|torneig|clásico|clasico)\b/i;
+
+const quitarFecha = (texto: string) =>
+  texto
+    .replace(/\s{2,}/g, ' ')
+    .replace(/\s*[-–,]?\s*\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b.*$/, '')
+    .replace(/\s*[-–,]?\s*\b\d{1,2}\s+de\s+\p{L}+\s+(?:de\s+|del\s+)?\d{4}\b.*$/iu, '');
+
+/**
+ * Nombre del torneo: primero se busca una línea con "Torneo", "Copa", "Trofeo"…; si no hay,
+ * la primera línea con pinta de título (sin hora, sin ser cabecera de tabla).
+ */
 function detectarNombre(lineas: LineaAnalizada[]): string | null {
-  for (const l of lineas.slice(0, 10)) {
-    if (l.hora || l.original.length < 4) continue;
+  const primeras = lineas.slice(0, 15).filter((l) => !l.hora && l.original.length >= 4);
+  const conPalabraClave = primeras.find((l) => RE_TITULO.test(l.original) && quitarFecha(l.original).length >= 4);
+  if (conPalabraClave) return formatearTitulo(quitarFecha(conPalabraClave.original));
+  for (const l of primeras) {
     const palabras = l.original.split(/\s+/);
     const cabecera = palabras.filter((p) => PALABRAS_NO_NOMBRE.has(p.toLowerCase().replace(/[.:]$/, ''))).length;
     if (/\p{L}{3,}/u.test(l.original) && cabecera < palabras.length / 2 && !/^\d/.test(l.original)) {
-      const sinFecha = l.original
-        .replace(/\s{2,}/g, ' ')
-        .replace(/\s*[-–,]?\s*\b\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b.*$/, '')
-        .replace(/\s*[-–,]?\s*\b\d{1,2}\s+de\s+\p{L}+\s+(?:de\s+|del\s+)?\d{4}\b.*$/iu, '');
-      return formatearTitulo(sinFecha);
+      return formatearTitulo(quitarFecha(l.original));
     }
   }
   return null;
@@ -213,7 +235,13 @@ export function interpretarHorario(lineas: string[]): ResultadoImportacion {
   let teeActual = 1;
 
   for (const l of analizadas) {
-    const nombres = (exigirComa ? l.nombres.filter((n) => n.includes(',')) : l.nombres).map(formatearNombre);
+    // Con "exigir coma" se acepta también un nombre sin coma si es lo único de la línea y
+    // tiene 3 palabras o más (nombres largos cortados, p. ej. "LADRON DE GUEVARA LUCA DE TENA").
+    const nombres = (
+      exigirComa
+        ? l.nombres.filter((n) => n.includes(',') || (l.nombres.length === 1 && n.split(/\s+/).length >= 3))
+        : l.nombres
+    ).map(formatearNombre);
 
     if (!l.hora) {
       if (l.cabeceraTee) {
@@ -233,7 +261,10 @@ export function interpretarHorario(lineas: string[]): ResultadoImportacion {
     const tee = l.tee ?? teeActual;
     const anterior = partidas.at(-1);
     const mismaPartida =
-      anterior && anterior.hora === l.hora && anterior.hoyoSalida === tee && anterior.jugadores.length + nombres.length <= 4;
+      anterior &&
+      anterior.hora === l.hora &&
+      anterior.hoyoSalida === tee &&
+      anterior.jugadores.length + nombres.length <= MAX_JUGADORES;
     if (mismaPartida) anterior.jugadores.push(...nombres);
     else partidas.push({ hora: l.hora, hoyoSalida: tee, jugadores: nombres });
   }
@@ -242,8 +273,10 @@ export function interpretarHorario(lineas: string[]): ResultadoImportacion {
   // tiene jugadores, se dejan todas para rellenarlas a mano.
   const conJugadores = partidas.filter((p) => p.jugadores.length > 0);
   const textoCompleto = lineas.join('\n');
+  const resultado = conJugadores.length >= partidas.length / 2 ? conJugadores : partidas;
   return {
-    partidas: conJugadores.length >= partidas.length / 2 ? conJugadores : partidas,
+    // Ordenadas por hora y tee (en salidas a tiro hay muchas partidas a la misma hora).
+    partidas: resultado.sort((a, b) => a.hora.localeCompare(b.hora) || a.hoyoSalida - b.hoyoSalida),
     fecha: detectarFecha(textoCompleto),
     nombre: detectarNombre(analizadas),
     ignoradas,

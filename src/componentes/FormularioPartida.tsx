@@ -97,22 +97,21 @@ export function FormularioPartida({ torneo, onCerrar }: { torneo: Torneo; onCerr
               className="cifras mt-1 h-12 w-full rounded-xl border border-slate-300 px-3 text-lg"
             />
           </label>
-          <div className="text-sm font-semibold text-slate-700">
+          <label className="block text-sm font-semibold text-slate-700">
             Sale por el tee
-            <div className="mt-1 grid h-12 grid-cols-2 rounded-xl bg-slate-100 p-1">
-              {[1, 10].map((h) => (
-                <button
-                  key={h}
-                  type="button"
-                  onClick={() => setHoyoSalida(h)}
-                  aria-pressed={hoyoSalida === h}
-                  className={`rounded-lg font-bold ${hoyoSalida === h ? 'bg-campo-700 text-white' : 'text-slate-600'}`}
-                >
-                  {h}
-                </button>
+            {/* Del 1 al 18: en las salidas a tiro cada partida empieza en un hoyo distinto. */}
+            <select
+              value={hoyoSalida}
+              onChange={(e) => setHoyoSalida(Number(e.target.value))}
+              className="mt-1 h-12 w-full rounded-xl border border-slate-300 bg-white px-3 text-lg font-bold"
+            >
+              {Array.from({ length: 18 }, (_, i) => i + 1).map((h) => (
+                <option key={h} value={h}>
+                  Tee {h}
+                </option>
               ))}
-            </div>
-          </div>
+            </select>
+          </label>
           <label className="block text-sm font-semibold text-slate-700">
             Nombre (opcional)
             <input

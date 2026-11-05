@@ -52,20 +52,22 @@ describe('evaluarRitmo', () => {
     expect(r.estado).toBe('en_tiempo');
   });
 
-  it('todavía en el tee del 1 a las 10:10 van 6 min tarde → retrasado', () => {
+  it('todavía en el tee del 1 a las 10:10 van 6 min tarde → atención', () => {
     const r = evaluarRitmo(salidaTee1, 1, 'tee', a('10:10:00'));
     expect(r.retrasoMin).toBe(6.3);
-    expect(r.estado).toBe('retrasado');
-  });
-
-  it('2 min fuera de la ventana sigue siendo "en tiempo" (tolerancia)', () => {
-    expect(evaluarRitmo(salidaTee1, 1, 'green', a('10:17:00')).estado).toBe('en_tiempo');
-  });
-
-  it('entre 2 y 5 min tarde es "aviso"', () => {
-    const r = evaluarRitmo(salidaTee1, 1, 'green', a('10:19:00'));
-    expect(r.retrasoMin).toBe(4);
     expect(r.estado).toBe('aviso');
+  });
+
+  it('hasta 5 min tarde sigue en verde', () => {
+    const r = evaluarRitmo(salidaTee1, 1, 'green', a('10:20:00'));
+    expect(r.retrasoMin).toBe(5);
+    expect(r.estado).toBe('en_tiempo');
+  });
+
+  it('de 6 a 14 min tarde es ámbar y desde 15 es rojo', () => {
+    expect(evaluarRitmo(salidaTee1, 1, 'green', a('10:21:00')).estado).toBe('aviso');
+    expect(evaluarRitmo(salidaTee1, 1, 'green', a('10:29:00')).estado).toBe('aviso');
+    expect(evaluarRitmo(salidaTee1, 1, 'green', a('10:30:00')).estado).toBe('retrasado');
   });
 
   it('llegar al hoyo 3 a las 10:20 es ir 10 min adelantados', () => {
@@ -76,7 +78,13 @@ describe('evaluarRitmo', () => {
 
   it('saliendo por el 10, el green del hoyo 1 debería ser a las 12:30', () => {
     expect(evaluarRitmo(salidaTee10, 1, 'green', a('12:30:00')).retrasoMin).toBe(0);
-    expect(evaluarRitmo(salidaTee10, 1, 'green', a('12:40:00')).estado).toBe('retrasado');
+    expect(evaluarRitmo(salidaTee10, 1, 'green', a('12:45:00')).estado).toBe('retrasado');
+  });
+
+  it('salida a tiro por el tee 4: el hoyo 3 es el último que juegan', () => {
+    const salidaTee4 = { horaSalida: a('09:30:00'), hoyoSalida: 4 };
+    expect(minutoInicioHoyo(3, 4)).toBe(255);
+    expect(evaluarRitmo(salidaTee4, 3, 'green', a('14:00:00')).retrasoMin).toBe(0);
   });
 
   it('nunca devuelve -0', () => {
@@ -86,13 +94,16 @@ describe('evaluarRitmo', () => {
 });
 
 describe('clasificarRetraso', () => {
-  it('respeta los umbrales', () => {
-    expect(clasificarRetraso(-3)).toBe('adelantado');
-    expect(clasificarRetraso(-2)).toBe('en_tiempo');
-    expect(clasificarRetraso(2)).toBe('en_tiempo');
-    expect(clasificarRetraso(2.1)).toBe('aviso');
-    expect(clasificarRetraso(5)).toBe('aviso');
-    expect(clasificarRetraso(5.1)).toBe('retrasado');
+  it('verde hasta 5, ámbar hasta 14, rojo desde 15 (en minutos enteros)', () => {
+    expect(clasificarRetraso(-6)).toBe('adelantado');
+    expect(clasificarRetraso(-5)).toBe('en_tiempo');
+    expect(clasificarRetraso(5)).toBe('en_tiempo');
+    expect(clasificarRetraso(5.4)).toBe('en_tiempo');
+    expect(clasificarRetraso(5.5)).toBe('aviso');
+    expect(clasificarRetraso(14)).toBe('aviso');
+    expect(clasificarRetraso(14.4)).toBe('aviso');
+    expect(clasificarRetraso(14.5)).toBe('retrasado');
+    expect(clasificarRetraso(15)).toBe('retrasado');
   });
 });
 

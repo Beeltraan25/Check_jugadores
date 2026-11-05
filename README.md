@@ -6,7 +6,7 @@ WebApp para controlar el ritmo de juego de un campo de golf en tiempo real.
 - **Caddy Master** (ordenador, en la oficina): ve en directo un **mapa del campo con un pin por partida**, indicadores del día, la lista de partidas y da de alta las salidas.
 - **Torneos**: se importa el **PDF del horario de salidas** y cada torneo queda guardado con todo lo que se registró (avistamientos, alquileres, observaciones). Cada torneo tiene su **informe** (retraso por hoyo, partidas que llegaron a rojo…) y se exporta a **Excel**.
 
-Regla de ritmo: **15 minutos por hoyo** desde la hora de salida (salida 10:00 → hoyo 1 terminado a las 10:15, hoyo 2 a las 10:30…). Admite salidas por el tee del 1 y del 10.
+Regla de ritmo: **15 minutos por hoyo** desde la hora de salida (salida 10:00 → hoyo 1 terminado a las 10:15, hoyo 2 a las 10:30…). Colores: 🟢 hasta +5 min de retraso, 🟠 de +6 a +14 min, 🔴 desde +15 min. Admite salidas por el tee del 1 y del 10 y salidas a tiro (cada partida por un tee del 1 al 18).
 
 📐 Arquitectura, base de datos y lógica del cálculo explicadas en **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)**.
 
@@ -46,7 +46,7 @@ Para probarlo en el móvil dentro de tu red WiFi: `npm run dev -- --host` y abre
 ## Torneos: importar el PDF de salidas
 
 1. **Torneos → Importar horario (PDF)** y elige el PDF del torneo.
-2. La app saca el nombre, la fecha y las partidas (hora, tee 1 o 10 y jugadores). Revisa la lista: puedes corregir nombres, horas o tees, añadir o quitar partidas. Si alguna línea parece un jugador sin partida, te avisa.
+2. La app saca el nombre, la fecha y las partidas (hora, tee y jugadores). Lee tanto listas de una columna como horarios con dos columnas de partidas en paralelo (como el de la Copa Corporate). Revisa la lista: puedes corregir nombres, horas o tees, añadir o quitar partidas. Si alguna línea parece un jugador sin partida, te avisa.
 3. **Guardar torneo y usarlo**: pasa a ser el torneo en uso en la oficina y en los móviles de los Marshal.
 
 Cada torneo guarda todo lo que se apunta durante el juego. Desde **Torneos** puedes:
@@ -75,7 +75,7 @@ En [`src/lib/ritmo.ts`](src/lib/ritmo.ts), `CONFIG_RITMO`:
 
 - `minutosPorHoyo`: 15 en todos los hoyos (puedes poner, por ejemplo, 12 en los par 3 y 17 en los par 5).
 - `tramos`: qué parte del hoyo corresponde a tee, 2º golpe, 3er golpe y green.
-- `tolerancia` (2 min) y `umbralRetraso` (5 min): límites entre verde, ámbar y rojo.
+- `limiteVerde` (5) y `limiteRojo` (15): **verde hasta +5 min, ámbar de +6 a +14 y rojo desde +15**. `margenAdelanto` (5): más de 5 min por delante se marca "adelantado" (también verde).
 
 ## Sin cobertura en el campo
 

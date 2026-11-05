@@ -16,6 +16,11 @@
  *   - visto antes del inicio de la ventana  → retraso negativo (van adelantados)
  *   - visto dentro de la ventana            → 0 (van en tiempo)
  *
+ * Colores (en minutos enteros de retraso):
+ *   🟢 verde  hasta +5 min         (en tiempo; más de 5 min por delante = "adelantado", también verde)
+ *   🟠 ámbar  de +6 a +14 min      (atención)
+ *   🔴 rojo   desde +15 min        (retrasado)
+ *
  * Todo son funciones puras (sin base de datos ni React), así se pueden probar con tests.
  */
 
@@ -36,10 +41,12 @@ export interface ConfigRitmo {
   minutosPorHoyo: number[];
   /** Tramo de cada posición como fracción del hoyo: [desde, hasta). */
   tramos: Record<Posicion, readonly [number, number]>;
-  /** Minutos de margen que se siguen considerando "en tiempo" (por delante o por detrás). */
-  tolerancia: number;
-  /** Más de estos minutos de retraso = "retrasado" (rojo). Entre tolerancia y esto = "aviso" (ámbar). */
-  umbralRetraso: number;
+  /** Hasta estos minutos de retraso la partida sigue en verde ("en tiempo"). */
+  limiteVerde: number;
+  /** Desde estos minutos de retraso la partida pasa a rojo ("retrasado"). Entre medias, ámbar. */
+  limiteRojo: number;
+  /** Más de estos minutos por delante del horario = "adelantado" (también verde). */
+  margenAdelanto: number;
 }
 
 export const CONFIG_RITMO: ConfigRitmo = {
@@ -50,8 +57,9 @@ export const CONFIG_RITMO: ConfigRitmo = {
     tercer_golpe: [0.5, 0.75],
     green: [0.75, 1],
   },
-  tolerancia: 2,
-  umbralRetraso: 5,
+  limiteVerde: 5,
+  limiteRojo: 15,
+  margenAdelanto: 5,
 };
 
 const MS_MINUTO = 60_000;
@@ -98,10 +106,15 @@ export function ventanaIdeal(
   };
 }
 
+/**
+ * Estado según el retraso. Se usan minutos enteros (los mismos que se ven en pantalla), así
+ * "+15 min" es siempre rojo aunque por dentro sean 14,6.
+ */
 export function clasificarRetraso(retrasoMin: number, cfg: ConfigRitmo = CONFIG_RITMO): EstadoRitmo {
-  if (retrasoMin > cfg.umbralRetraso) return 'retrasado';
-  if (retrasoMin > cfg.tolerancia) return 'aviso';
-  if (retrasoMin < -cfg.tolerancia) return 'adelantado';
+  const minutos = Math.round(retrasoMin);
+  if (minutos >= cfg.limiteRojo) return 'retrasado';
+  if (minutos > cfg.limiteVerde) return 'aviso';
+  if (minutos < -cfg.margenAdelanto) return 'adelantado';
   return 'en_tiempo';
 }
 

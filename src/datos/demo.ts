@@ -146,9 +146,10 @@ function generarPartidasDemo(torneoId: string, fecha: string, ahora: Date): Part
       };
     });
 
-    // Cuánto se retrasa esta partida respecto al ritmo ideal (min). Un tercio van lentas.
+    // Cuánto se retrasa esta partida respecto al ritmo ideal (min): la mitad van bien,
+    // unas cuantas en ámbar y alguna en rojo (el retraso crece a lo largo de la vuelta).
     const tipoRitmo = azar();
-    const retrasoReal = tipoRitmo < 0.45 ? -3 + azar() * 4 : tipoRitmo < 0.7 ? 2 + azar() * 4 : 6 + azar() * 10;
+    const retrasoReal = tipoRitmo < 0.5 ? -2 + azar() * 5 : tipoRitmo < 0.8 ? 5 + azar() * 4 : 10 + azar() * 6;
 
     const avistamientos: Avistamiento[] = [];
     const minutosJugados = (ahora.getTime() - salida.getTime()) / 60_000;

@@ -31,7 +31,7 @@ export interface HoyoCampo {
 }
 
 export const MAPA = {
-  nombre: 'Club de Golf',
+  nombre: 'Montealvar',
   url: '/mapa-campo.png',
 };
 

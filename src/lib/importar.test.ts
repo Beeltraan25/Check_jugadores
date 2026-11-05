@@ -21,8 +21,8 @@ describe('interpretarHorario', () => {
     expect(r.fecha).toBe('2026-11-15');
     expect(r.partidas).toEqual([
       { hora: '08:00', hoyoSalida: 1, jugadores: ['Garcia Lopez, Juan', 'Martin Ruiz, Ana', 'De la Fuente, Pedro'] },
-      { hora: '08:10', hoyoSalida: 1, jugadores: ['Perez Gil, Luis', 'Nuñez del Rio, Maria Jose'] },
       { hora: '08:00', hoyoSalida: 10, jugadores: ['Sanchez, Eva'] },
+      { hora: '08:10', hoyoSalida: 1, jugadores: ['Perez Gil, Luis', 'Nuñez del Rio, Maria Jose'] },
     ]);
   });
 
@@ -37,8 +37,8 @@ describe('interpretarHorario', () => {
     expect(r.fecha).toBe('2026-05-03');
     expect(r.partidas.map((p) => [p.hora, p.hoyoSalida, p.jugadores.length])).toEqual([
       ['08:30', 1, 4],
-      ['08:40', 1, 2],
       ['08:30', 10, 3],
+      ['08:40', 1, 2],
     ]);
     expect(r.partidas[0].jugadores[0]).toBe('Pérez, Luis');
   });
@@ -56,8 +56,8 @@ describe('interpretarHorario', () => {
     ]);
     expect(r.partidas).toEqual([
       { hora: '09:00', hoyoSalida: 1, jugadores: ['Juan García', 'Ana Martín', 'Luis Pérez'] },
-      { hora: '09:10', hoyoSalida: 1, jugadores: ['Eva Sánchez'] },
       { hora: '09:00', hoyoSalida: 10, jugadores: ['Pablo Ruiz', 'Marta Gil'] },
+      { hora: '09:10', hoyoSalida: 1, jugadores: ['Eva Sánchez'] },
     ]);
   });
 
@@ -86,11 +86,11 @@ describe('títulos y avisos', () => {
     expect(interpretarHorario(['XXV TORNEO SOCIAL', '08:00  1  RUIZ, ANA']).nombre).toBe('XXV Torneo Social');
   });
 
-  it('avisa de un posible jugador que no cabe en ninguna partida', () => {
+  it('avisa de los posibles jugadores que no caben en ninguna partida', () => {
     const lineas = ['08:00  1  A1, ANA', 'B1, LUIS', 'C1, EVA', 'D1, PEDRO', 'E1, LUZ', 'FERRER, MARIO'];
     const r = interpretarHorario(lineas.map((l) => l.replace(/[A-E]1/, (x) => ({ A1: 'ALBA', B1: 'BAEZ', C1: 'CANO', D1: 'DURO', E1: 'EGEA' })[x]!)));
-    expect(r.partidas[0].jugadores).toHaveLength(5);
-    expect(r.ignoradas).toEqual(['FERRER, MARIO']);
+    expect(r.partidas[0].jugadores).toHaveLength(4); // una partida tiene como mucho 4 jugadores
+    expect(r.ignoradas).toEqual(['EGEA, LUZ', 'FERRER, MARIO']);
   });
 });
 
@@ -99,6 +99,11 @@ describe('detectarFecha', () => {
     expect(detectarFecha('Día 5/11/26')).toBe('2026-11-05');
     expect(detectarFecha('Sábado, 21 de noviembre de 2026')).toBe('2026-11-21');
     expect(detectarFecha('sin fecha')).toBeNull();
+  });
+
+  it('prefiere la fecha del torneo a la de impresión del listado', () => {
+    const texto = 'CLUB   Fecha Listado: 31/10/2026\nTORNEO X 01.11.2026\nStableford   FECHA: 01/11/2026';
+    expect(detectarFecha(texto)).toBe('2026-11-01');
   });
 });
 
