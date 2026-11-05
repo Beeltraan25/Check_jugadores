@@ -1,16 +1,16 @@
 /**
  * Implementación con Supabase (PostgreSQL + Realtime).
  *
- * - Lectura: una sola consulta trae las partidas del día con jugadores, alquileres y avistamientos.
- * - Tiempo real: un canal escucha los cambios de las 4 tablas; ante cualquier cambio la app
- *   vuelve a leer el día (son pocas filas, y así nunca hay datos a medio actualizar).
+ * - Lectura: una sola consulta trae las partidas del torneo con jugadores, alquileres y avistamientos.
+ * - Tiempo real: un canal escucha los cambios de las 5 tablas; ante cualquier cambio la app
+ *   vuelve a leer el torneo (son pocas filas, y así nunca hay datos a medio actualizar).
  * - Escritura con cola offline (outbox): cada cambio se guarda primero en el dispositivo y se
  *   envía en orden. Si no hay cobertura, se queda en la cola y se reintenta solo.
  */
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
 import { normalizarPartidas, type Operacion } from './operaciones';
-import { crearEmisor, type EstadoConexion, type EventoRepositorio, type Repositorio } from './repositorio';
-import type { Alquiler, Avistamiento, Partida } from './tipos';
+import { crearEmisor, type EstadoConexion, type EventoRepositorio, type Repositorio, type TorneoConResumen } from './repositorio';
+import type { Alquiler, Avistamiento, Partida, Torneo } from './tipos';
 import { nuevoId } from '../lib/ids';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -19,7 +19,7 @@ const clave = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 /** Cliente de Supabase, o null si no hay credenciales (entonces la app usa el modo demo). */
 export const supabase = url && clave ? createClient(url, clave) : null;
 
-const TABLAS = ['partidas', 'jugadores', 'alquileres', 'avistamientos'] as const;
+const TABLAS = ['torneos', 'partidas', 'jugadores', 'alquileres', 'avistamientos'] as const;
 const CLAVE_COLA = 'ritmo-golf:cola';
 const REINTENTO_MS = 20_000;
 
@@ -57,6 +57,7 @@ const iso = (fecha: string | null) => (fecha ? new Date(fecha).toISOString() : n
 function desdeFila(f: FilaPartida): Partida {
   return {
     id: f.id,
+    torneo_id: f.torneo_id,
     fecha: f.fecha,
     hora_salida: iso(f.hora_salida)!,
     hoyo_salida: f.hoyo_salida,
@@ -80,22 +81,51 @@ function desdeFila(f: FilaPartida): Partida {
   };
 }
 
+function torneoDesdeFila(f: Torneo & { partidas?: { count: number }[] }): TorneoConResumen {
+  return {
+    id: f.id,
+    nombre: f.nombre,
+    fecha: f.fecha,
+    notas: f.notas ?? '',
+    creado_en: iso(f.creado_en)!,
+    cerrado_en: iso(f.cerrado_en),
+    num_partidas: f.partidas?.[0]?.count ?? 0,
+  };
+}
+
 // --- Envío de cada operación a la base de datos --------------------------------------
+
+/** Inserta partidas con sus jugadores y alquileres (sin duplicar si ya existen). */
+async function insertarPartidas(partidas: Partida[]): Promise<void> {
+  const db = supabase!;
+  if (partidas.length === 0) return;
+  const filasPartidas = partidas.map(({ jugadores: _j, avistamientos: _a, ...p }) => p);
+  await comprobar(db.from('partidas').upsert(filasPartidas, { onConflict: 'id', ignoreDuplicates: true }));
+  const jugadores = partidas.flatMap((p) => p.jugadores);
+  if (jugadores.length) {
+    const filas = jugadores.map(({ alquiler: _alquiler, ...j }) => j);
+    await comprobar(db.from('jugadores').upsert(filas, { onConflict: 'id', ignoreDuplicates: true }));
+  }
+  const alquileres = jugadores.flatMap((j) => (j.alquiler ? [j.alquiler] : []));
+  if (alquileres.length) await comprobar(db.from('alquileres').upsert(alquileres, { onConflict: 'jugador_id' }));
+}
 
 async function enviar(op: Operacion): Promise<void> {
   const db = supabase!;
   switch (op.tipo) {
-    case 'crear_partida': {
-      const { jugadores, avistamientos: _avistamientos, ...partida } = op.partida;
-      await comprobar(db.from('partidas').upsert(partida, { onConflict: 'id', ignoreDuplicates: true }));
-      if (jugadores.length) {
-        const filas = jugadores.map(({ alquiler: _alquiler, ...j }) => j);
-        await comprobar(db.from('jugadores').upsert(filas, { onConflict: 'id', ignoreDuplicates: true }));
-      }
-      const alquileres = jugadores.flatMap((j) => (j.alquiler ? [j.alquiler] : []));
-      if (alquileres.length) await comprobar(db.from('alquileres').upsert(alquileres, { onConflict: 'jugador_id' }));
-      return;
+    case 'crear_torneo': {
+      const { id, nombre, fecha, notas, creado_en, cerrado_en } = op.torneo;
+      await comprobar(
+        db.from('torneos').upsert({ id, nombre, fecha, notas, creado_en, cerrado_en }, { onConflict: 'id', ignoreDuplicates: true }),
+      );
+      return insertarPartidas(op.partidas);
     }
+    case 'actualizar_torneo':
+      return comprobar(db.from('torneos').update(op.cambios).eq('id', op.torneoId));
+    case 'eliminar_torneo':
+      return comprobar(db.from('torneos').delete().eq('id', op.torneoId));
+    case 'crear_partida':
+      return insertarPartidas([op.partida]);
     case 'eliminar_partida':
       return comprobar(db.from('partidas').delete().eq('id', op.partidaId));
     case 'iniciar_revision':
@@ -198,11 +228,21 @@ export function crearRepositorioSupabase(): Repositorio {
   return {
     modo: 'supabase',
 
-    async cargarDia(fecha) {
+    async listarTorneos() {
+      const { data, error } = await db
+        .from('torneos')
+        .select('*, partidas(count)')
+        .order('fecha', { ascending: false })
+        .order('creado_en', { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data as (Torneo & { partidas: { count: number }[] })[]).map(torneoDesdeFila);
+    },
+
+    async cargarTorneo(torneoId) {
       const { data, error } = await db
         .from('partidas')
         .select('*, jugadores(*, alquileres(*)), avistamientos(*)')
-        .eq('fecha', fecha);
+        .eq('torneo_id', torneoId);
       if (error) throw new Error(error.message);
       return normalizarPartidas((data as FilaPartida[]).map(desdeFila));
     },

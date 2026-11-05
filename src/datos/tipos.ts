@@ -45,9 +45,25 @@ export interface Avistamiento {
   marshal: string | null;
 }
 
+/**
+ * Un torneo (o una jornada de juego). Agrupa sus partidas y todo lo registrado en él:
+ * avistamientos, alquileres y observaciones quedan guardados para consultarlos después.
+ */
+export interface Torneo {
+  id: string;
+  nombre: string;
+  /** Día del torneo, AAAA-MM-DD. */
+  fecha: string;
+  notas: string;
+  creado_en: string;
+  /** Cuándo se dio por cerrado (null = abierto, en juego). */
+  cerrado_en: string | null;
+}
+
 /** Una partida (grupo de jugadores) con todo lo que cuelga de ella. */
 export interface Partida {
   id: string;
+  torneo_id: string;
   /** Día de juego, en formato AAAA-MM-DD (hora local). */
   fecha: string;
   /** Hora de salida (tee time) en ISO 8601. */

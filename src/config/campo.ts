@@ -32,28 +32,33 @@ export interface HoyoCampo {
 
 export const MAPA = {
   nombre: 'Club de Golf',
-  url: '/mapa-campo.svg',
+  url: '/mapa-campo.png',
 };
 
+/**
+ * Coordenadas medidas sobre public/mapa-campo.png (569 × 466 px).
+ * Los par están deducidos de la longitud de cada hoyo en el mapa (suman 72): revísalos.
+ * Los hoyos 4 y 11 tienen dogleg, por eso llevan los puntos del 2º y 3er golpe fijados a mano.
+ */
 export const HOYOS: HoyoCampo[] = [
-  { numero: 1, par: 4, tee: { x: 46, y: 82 }, green: { x: 30, y: 70 } },
-  { numero: 2, par: 4, tee: { x: 27, y: 66 }, green: { x: 11, y: 58 } },
-  { numero: 3, par: 3, tee: { x: 9, y: 51 }, green: { x: 13, y: 33 } },
-  { numero: 4, par: 5, tee: { x: 16, y: 27 }, green: { x: 11, y: 8 } },
-  { numero: 5, par: 4, tee: { x: 17, y: 6 }, green: { x: 35, y: 9 } },
-  { numero: 6, par: 3, tee: { x: 37, y: 14 }, green: { x: 31, y: 28 } },
-  { numero: 7, par: 4, tee: { x: 33, y: 34 }, green: { x: 24, y: 50 } },
-  { numero: 8, par: 5, tee: { x: 27, y: 55 }, green: { x: 42, y: 45 } },
-  { numero: 9, par: 4, tee: { x: 44, y: 50 }, green: { x: 47, y: 74 } },
-  { numero: 10, par: 4, tee: { x: 54, y: 82 }, green: { x: 70, y: 72 } },
-  { numero: 11, par: 3, tee: { x: 73, y: 67 }, green: { x: 86, y: 62 } },
-  { numero: 12, par: 5, tee: { x: 90, y: 56 }, green: { x: 87, y: 30 } },
-  { numero: 13, par: 4, tee: { x: 84, y: 26 }, green: { x: 88, y: 8 } },
-  { numero: 14, par: 4, tee: { x: 82, y: 6 }, green: { x: 64, y: 9 } },
-  { numero: 15, par: 3, tee: { x: 61, y: 13 }, green: { x: 66, y: 27 } },
-  { numero: 16, par: 4, tee: { x: 65, y: 33 }, green: { x: 77, y: 47 } },
-  { numero: 17, par: 5, tee: { x: 74, y: 53 }, green: { x: 57, y: 45 } },
-  { numero: 18, par: 4, tee: { x: 56, y: 51 }, green: { x: 53, y: 75 } },
+  { numero: 1, par: 5, tee: { x: 70.3, y: 65.0 }, green: { x: 39.0, y: 75.8 } },
+  { numero: 2, par: 3, tee: { x: 36.6, y: 76.2 }, green: { x: 28.6, y: 78.1 } },
+  { numero: 3, par: 4, tee: { x: 22.8, y: 92.7 }, green: { x: 10.2, y: 67.8 } },
+  { numero: 4, par: 5, tee: { x: 10.9, y: 63.7 }, green: { x: 35.0, y: 32.0 }, segundo: { x: 22.8, y: 54.9 }, tercero: { x: 29.5, y: 43.6 } },
+  { numero: 5, par: 4, tee: { x: 35.7, y: 38.2 }, green: { x: 19.3, y: 67.2 } },
+  { numero: 6, par: 4, tee: { x: 22.5, y: 70.8 }, green: { x: 37.8, y: 42.9 } },
+  { numero: 7, par: 4, tee: { x: 41.5, y: 44.0 }, green: { x: 27.8, y: 71.2 } },
+  { numero: 8, par: 4, tee: { x: 32.2, y: 72.1 }, green: { x: 56.2, y: 63.7 } },
+  { numero: 9, par: 3, tee: { x: 60.6, y: 63.9 }, green: { x: 70.7, y: 62.0 } },
+  { numero: 10, par: 4, tee: { x: 65.4, y: 55.2 }, green: { x: 44.5, y: 59.4 } },
+  { numero: 11, par: 5, tee: { x: 44.3, y: 53.2 }, green: { x: 55.7, y: 14.6 }, segundo: { x: 45.2, y: 37.8 }, tercero: { x: 50.4, y: 25.5 } },
+  { numero: 12, par: 3, tee: { x: 49.2, y: 18.9 }, green: { x: 41.7, y: 29.8 } },
+  { numero: 13, par: 4, tee: { x: 37.8, y: 26.8 }, green: { x: 54.7, y: 7.1 } },
+  { numero: 14, par: 5, tee: { x: 57.3, y: 8.2 }, green: { x: 83.3, y: 33.9 } },
+  { numero: 15, par: 3, tee: { x: 86.1, y: 34.3 }, green: { x: 87.5, y: 48.1 } },
+  { numero: 16, par: 4, tee: { x: 84.0, y: 41.8 }, green: { x: 61.9, y: 19.3 } },
+  { numero: 17, par: 4, tee: { x: 58.3, y: 18.5 }, green: { x: 50.3, y: 48.1 } },
+  { numero: 18, par: 4, tee: { x: 50.1, y: 53.2 }, green: { x: 67.0, y: 47.6 } },
 ];
 
 /** Por dónde suele caer cada golpe entre el tee y el green (0 = tee, 1 = green), según el par. */

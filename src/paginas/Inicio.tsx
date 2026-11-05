@@ -1,14 +1,15 @@
 import { Link } from 'react-router';
-import { modoDatos } from '../datos/DatosProvider';
-import { reiniciarDemo } from '../datos/demo';
+import { modoDatos, useDatos } from '../datos/DatosProvider';
 import { cerrarSesion } from '../datos/sesion';
 import { MAPA } from '../config/campo';
 import { duracionVueltaMin, CONFIG_RITMO } from '../lib/ritmo';
+import { fechaLarga } from '../lib/textos';
 
 export function Inicio() {
+  const { torneo, numPartidas } = useDatos();
   const vuelta = duracionVueltaMin();
   return (
-    <main className="mx-auto flex min-h-dvh max-w-4xl flex-col justify-center gap-8 px-4 py-10">
+    <main className="mx-auto flex min-h-dvh max-w-4xl flex-col justify-center gap-6 px-4 py-10">
       <header className="text-center">
         <img src="/icono.svg" alt="" className="mx-auto mb-4 h-16 w-16" />
         <h1 className="text-3xl font-black tracking-tight text-campo-900 sm:text-4xl">Ritmo de juego</h1>
@@ -17,6 +18,28 @@ export function Inicio() {
           {vuelta % 60 ? `${vuelta % 60} min` : ''}
         </p>
       </header>
+
+      <Link
+        to="/torneos"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-campo-600"
+      >
+        <span className="min-w-0">
+          <span className="block text-xs font-bold uppercase tracking-wide text-slate-500">Torneo en uso</span>
+          {torneo ? (
+            <>
+              <span className="block text-lg font-bold text-slate-900">{torneo.nombre}</span>
+              <span className="block text-sm text-slate-600">
+                {fechaLarga(torneo.fecha)} · {numPartidas(torneo.id)} partidas{torneo.cerrado_en ? ' · cerrado' : ''}
+              </span>
+            </>
+          ) : (
+            <span className="block text-lg font-bold text-slate-900">Ninguno todavía</span>
+          )}
+        </span>
+        <span className="rounded-lg bg-campo-50 px-3 py-2 text-sm font-bold text-campo-800">
+          {torneo ? 'Torneos e informes ›' : 'Importar torneo ›'}
+        </span>
+      </Link>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Link
@@ -45,24 +68,13 @@ export function Inicio() {
         <aside className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
           <p className="font-bold">Modo demo (sin base de datos)</p>
           <p className="mt-1">
-            Los datos son de prueba y se guardan en este navegador. Abre <strong>/marshal</strong> y <strong>/oficina</strong> en dos
-            pestañas para ver la sincronización en tiempo real. Para usarlo entre varios dispositivos, configura Supabase (ver README).
+            Los datos se guardan solo en este navegador. Abre <strong>/marshal</strong> y <strong>/oficina</strong> en dos pestañas
+            para ver la sincronización en tiempo real. Para usarlo entre el móvil del Marshal y el ordenador de la oficina, conecta
+            Supabase (ver README).
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                reiniciarDemo();
-                window.location.reload();
-              }}
-              className="min-h-10 rounded-lg bg-amber-200 px-3 font-semibold hover:bg-amber-300"
-            >
-              Generar datos de prueba nuevos
-            </button>
-            <Link to="/calibrar" className="inline-flex min-h-10 items-center rounded-lg px-3 font-semibold hover:bg-amber-100">
-              Calibrar el mapa del campo
-            </Link>
-          </div>
+          <Link to="/calibrar" className="mt-2 inline-flex min-h-10 items-center font-semibold underline">
+            Calibrar el mapa del campo
+          </Link>
         </aside>
       ) : (
         <div className="flex justify-center gap-4 text-sm">

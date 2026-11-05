@@ -4,6 +4,7 @@ import { Cabecera, EstadoBadge, Seccion } from '../componentes/basicos';
 import { HistorialAvistamientos } from '../componentes/Historial';
 import { EditorObservaciones } from '../componentes/Observaciones';
 import { RegistroAvistamiento } from '../componentes/RegistroAvistamiento';
+import { AvisoFechaTorneo } from '../componentes/SinTorneo';
 import { useDatos, usePartida } from '../datos/DatosProvider';
 import { useAhora } from '../hooks/useAhora';
 import { etiquetaPartida, nombresJugadores, resumirPartida, tituloPartida } from '../lib/partidas';
@@ -12,7 +13,7 @@ import { etiquetaPartida, nombresJugadores, resumirPartida, tituloPartida } from
 export function MarshalPartida() {
   const { id } = useParams();
   const partida = usePartida(id);
-  const { cargando, ejecutar } = useDatos();
+  const { cargando, ejecutar, torneo } = useDatos();
   const ahora = useAhora(15_000);
 
   if (!partida) {
@@ -20,7 +21,7 @@ export function MarshalPartida() {
       <div className="min-h-dvh">
         <Cabecera titulo="Marshal" volverA="/marshal" />
         <p className="p-8 text-center text-slate-500">
-          {cargando ? 'Cargando…' : 'Esta partida no existe o es de otro día.'}{' '}
+          {cargando ? 'Cargando…' : 'Esta partida no existe o es de otro torneo.'}{' '}
           <Link to="/marshal" className="font-semibold text-campo-700 underline">
             Volver a la lista
           </Link>
@@ -42,6 +43,7 @@ export function MarshalPartida() {
           </span>
         }
       />
+      <AvisoFechaTorneo torneo={torneo} />
       {/* key: al cambiar de partida se reinicia el estado local (resultado, textos a medio escribir) */}
       <main key={partida.id} className="mx-auto max-w-3xl space-y-4 px-3 py-4">
         <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">

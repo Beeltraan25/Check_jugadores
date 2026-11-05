@@ -7,61 +7,44 @@
 import { evaluarRitmo, posicionEsperada, duracionVueltaMin } from '../lib/ritmo';
 import { nuevoId } from '../lib/ids';
 import { fechaLocal } from '../lib/hora';
-import { aplicarOperacion, normalizarPartidas, type Operacion } from './operaciones';
+import { aplicarOperacion, normalizarPartidas, ordenarTorneos, type Estado, type Operacion } from './operaciones';
 import { crearEmisor, type EventoRepositorio, type Repositorio } from './repositorio';
-import type { Avistamiento, Jugador, Partida, TipoAlquiler } from './tipos';
+import type { Avistamiento, Jugador, Partida, TipoAlquiler, Torneo } from './tipos';
 
-const CLAVE_DATOS = 'ritmo-golf:demo:v1';
-const CLAVE_SEMBRADO = 'ritmo-golf:demo:sembrado:';
+const CLAVE_DATOS = 'ritmo-golf:demo:v2';
+const CLAVE_SEMBRADO = 'ritmo-golf:demo:v2:sembrado';
 const CANAL = 'ritmo-golf-demo';
 
-let memoria: Partida[] | null = null;
+let memoria: Estado | null = null;
 
-function leer(): Partida[] {
+function leer(): Estado {
   try {
     const crudo = localStorage.getItem(CLAVE_DATOS);
-    if (crudo) return JSON.parse(crudo) as Partida[];
+    if (crudo) return JSON.parse(crudo) as Estado;
   } catch {
     /* almacenamiento bloqueado: seguimos en memoria */
   }
-  return memoria ?? [];
+  return memoria ?? { torneos: [], partidas: [] };
 }
 
-function escribir(partidas: Partida[]) {
-  memoria = partidas;
+function escribir(estado: Estado) {
+  memoria = estado;
   try {
-    localStorage.setItem(CLAVE_DATOS, JSON.stringify(partidas));
+    localStorage.setItem(CLAVE_DATOS, JSON.stringify(estado));
   } catch {
     /* sin almacenamiento: solo en memoria */
   }
 }
 
-function yaSembrado(fecha: string): boolean {
+/** La primera vez que se abre la demo se crea un torneo de ejemplo. */
+function sembrarSiHaceFalta() {
   try {
-    return localStorage.getItem(CLAVE_SEMBRADO + fecha) === '1';
+    if (localStorage.getItem(CLAVE_SEMBRADO) === '1') return;
+    localStorage.setItem(CLAVE_SEMBRADO, '1');
   } catch {
-    return memoria !== null;
+    if (memoria) return;
   }
-}
-
-function marcarSembrado(fecha: string) {
-  try {
-    localStorage.setItem(CLAVE_SEMBRADO + fecha, '1');
-  } catch {
-    /* nada */
-  }
-}
-
-/** Borra los datos de prueba; al recargar se generan otros nuevos. */
-export function reiniciarDemo() {
-  memoria = null;
-  try {
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith('ritmo-golf:demo'))
-      .forEach((k) => localStorage.removeItem(k));
-  } catch {
-    /* nada */
-  }
+  escribir(aplicarOperacion(leer(), torneoDeEjemplo(new Date())));
 }
 
 export function crearRepositorioDemo(): Repositorio {
@@ -69,17 +52,19 @@ export function crearRepositorioDemo(): Repositorio {
   const recargas = new Set<() => void>();
   const canal = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(CANAL) : null;
   canal?.addEventListener('message', () => recargas.forEach((r) => r()));
+  sembrarSiHaceFalta();
 
   return {
     modo: 'demo',
-    async cargarDia(fecha) {
-      let todas = leer();
-      if (!yaSembrado(fecha) && !todas.some((p) => p.fecha === fecha)) {
-        todas = [...todas, ...generarPartidasDemo(fecha, new Date())];
-        escribir(todas);
-        marcarSembrado(fecha);
-      }
-      return normalizarPartidas(todas.filter((p) => p.fecha === fecha));
+    async listarTorneos() {
+      const { torneos, partidas } = leer();
+      return ordenarTorneos(torneos).map((t) => ({
+        ...t,
+        num_partidas: partidas.filter((p) => p.torneo_id === t.id).length,
+      }));
+    },
+    async cargarTorneo(torneoId) {
+      return normalizarPartidas(leer().partidas.filter((p) => p.torneo_id === torneoId));
     },
     suscribir(alCambiar) {
       recargas.add(alCambiar);
@@ -100,6 +85,20 @@ export function crearRepositorioDemo(): Repositorio {
   };
 }
 
+/** Operación que crea un torneo de ejemplo para hoy con partidas alrededor de la hora actual. */
+export function torneoDeEjemplo(ahora: Date): Operacion {
+  const fecha = fechaLocal(ahora);
+  const torneo: Torneo = {
+    id: nuevoId(),
+    nombre: 'Torneo de ejemplo',
+    fecha,
+    notas: 'Datos inventados para probar la app.',
+    creado_en: ahora.toISOString(),
+    cerrado_en: null,
+  };
+  return { tipo: 'crear_torneo', torneo, partidas: generarPartidasDemo(torneo.id, fecha, ahora) };
+}
+
 // ---------------------------------------------------------------------------
 // Datos de prueba: partidas cada 15 min alrededor de la hora actual, con
 // avistamientos coherentes con la lógica de ritmo (unas van bien y otras lentas).
@@ -109,8 +108,7 @@ const NOMBRES = ['Javier', 'Lucía', 'Carlos', 'Marta', 'Pablo', 'Elena', 'Andr�
 const APELLIDOS = ['García', 'Martínez', 'López', 'Sánchez', 'Pérez', 'Gómez', 'Fernández', 'Ruiz', 'Díaz', 'Moreno', 'Álvarez', 'Romero', 'Navarro', 'Torres', 'Domínguez', 'Vázquez', 'Ramos', 'Gil', 'Serrano', 'Molina', 'Ortega', 'Delgado', 'Castro', 'Rubio'];
 const NOTAS_LENTAS = ['Avisados por juego lento.', 'Jugador buscando bola en el bosque.', 'Han dejado pasar a la partida de detrás.', 'Esperando en el tee, el green estaba ocupado.'];
 
-function generarPartidasDemo(fecha: string, ahora: Date): Partida[] {
-  if (fecha !== fechaLocal(ahora)) return [];
+function generarPartidasDemo(torneoId: string, fecha: string, ahora: Date): Partida[] {
 
   let semilla = Number(fecha.replaceAll('-', '')) % 2147483647;
   const azar = () => {
@@ -187,10 +185,11 @@ function generarPartidasDemo(fecha: string, ahora: Date): Partida[] {
     const enJuego = minutosJugados > 0 && finPrevisto > ahora.getTime();
     partidas.push({
       id: partidaId,
+      torneo_id: torneoId,
       fecha,
       hora_salida: salida.toISOString(),
       hoyo_salida: hoyoSalida,
-      nombre: i === 3 ? 'Torneo social' : '',
+      nombre: '',
       observaciones: ultimo && ultimo.retraso_min > 5 ? elegir(NOTAS_LENTAS) : '',
       // Una partida con el Marshal revisándola ahora mismo.
       revision_iniciada_en: enJuego && i % 7 === 5 ? new Date(ahora.getTime() - 2 * 60_000).toISOString() : null,

@@ -4,6 +4,7 @@ WebApp para controlar el ritmo de juego de un campo de golf en tiempo real.
 
 - **Marshal** (móvil o tablet, en el campo): empieza la revisión de una partida, toca el hoyo y la posición (tee, 2º golpe, 3er golpe, green) y la app guarda la hora exacta y le dice al momento si van **en tiempo (verde)** o **lentos (ámbar/rojo)**. También apunta alquileres (carro eléctrico o buggy con su nº) y observaciones.
 - **Caddy Master** (ordenador, en la oficina): ve en directo un **mapa del campo con un pin por partida**, indicadores del día, la lista de partidas y da de alta las salidas.
+- **Torneos**: se importa el **PDF del horario de salidas** y cada torneo queda guardado con todo lo que se registró (avistamientos, alquileres, observaciones). Cada torneo tiene su **informe** (retraso por hoyo, partidas que llegaron a rojo…) y se exporta a **Excel**.
 
 Regla de ritmo: **15 minutos por hoyo** desde la hora de salida (salida 10:00 → hoyo 1 terminado a las 10:15, hoyo 2 a las 10:30…). Admite salidas por el tee del 1 y del 10.
 
@@ -42,13 +43,31 @@ Para probarlo en el móvil dentro de tu red WiFi: `npm run dev -- --host` y abre
 
 > La clave pública puede ir en la web sin problema: la seguridad la ponen las políticas RLS del `schema.sql` (solo el personal con sesión iniciada puede leer y escribir). **Nunca** pongas la clave `service_role` en el frontend.
 
-## Poner el mapa de tu campo
+## Torneos: importar el PDF de salidas
 
-1. Copia la imagen en `public/` (p. ej. `public/mapa-campo.jpg`).
-2. En [`src/config/campo.ts`](src/config/campo.ts) cambia `MAPA.url` a `'/mapa-campo.jpg'` y el nombre del club.
-3. Abre la app en **`/calibrar`**: haz clic en el tee y en el green de cada hoyo, en orden. Al acabar, copia el código que te genera y sustituye el array `HOYOS` de `campo.ts`. Revisa también el **par** de cada hoyo.
+1. **Torneos → Importar horario (PDF)** y elige el PDF del torneo.
+2. La app saca el nombre, la fecha y las partidas (hora, tee 1 o 10 y jugadores). Revisa la lista: puedes corregir nombres, horas o tees, añadir o quitar partidas. Si alguna línea parece un jugador sin partida, te avisa.
+3. **Guardar torneo y usarlo**: pasa a ser el torneo en uso en la oficina y en los móviles de los Marshal.
 
-Los puntos del 2º y 3er golpe se calculan solos entre el tee y el green según el par. En hoyos con dogleg puedes fijarlos a mano con `segundo` y `tercero`.
+Cada torneo guarda todo lo que se apunta durante el juego. Desde **Torneos** puedes:
+
+- **Usar** otro torneo (cada dispositivo usa por defecto el torneo abierto más reciente).
+- **Ver informe**: partidas, jugadores, avistamientos, retraso medio, partidas que llegaron a rojo, buggies y carros, retraso medio por hoyo y el historial completo de cada partida.
+- **Exportar a Excel** (CSV): una hoja con una fila por partida y otra con todos los tiempos.
+- **Cerrar** el torneo al acabar (sigue guardado) o **eliminarlo**.
+
+Si el PDF es una foto escaneada (sin texto), no se puede leer: pega el texto en el recuadro de la misma pantalla o crea el torneo vacío y añade las partidas a mano.
+
+## El mapa del campo
+
+Ya está puesto el mapa del club (`public/mapa-campo.png`), con el tee y el green de cada hoyo situados en [`src/config/campo.ts`](src/config/campo.ts). Los **par** de cada hoyo están deducidos de la longitud en el mapa (suman 72): revísalos, porque deciden dónde se dibujan los pines del 2º y 3er golpe.
+
+Para cambiar de imagen (por ejemplo, una con más resolución):
+
+1. Copia la imagen en `public/` y cambia `MAPA.url` en `campo.ts` (y el nombre del club).
+2. Abre la app en **`/calibrar`**: haz clic en el tee y en el green de cada hoyo, en orden. Al acabar, copia el código que te genera y sustituye el array `HOYOS`.
+
+En hoyos con dogleg (ahora el 4 y el 11) los puntos del 2º y 3er golpe se fijan a mano con `segundo` y `tercero`; en el resto se calculan solos entre el tee y el green.
 
 ## Ajustar el ritmo
 
@@ -77,6 +96,6 @@ Sube la carpeta `dist/` a [Vercel](https://vercel.com) o [Netlify](https://netli
 | Comando | Qué hace |
 | --- | --- |
 | `npm run dev` | Servidor de desarrollo |
-| `npm test` | Tests de la lógica del ritmo y de las operaciones |
+| `npm test` | Tests de la lógica del ritmo, las operaciones, la importación del PDF y la exportación |
 | `npm run typecheck` | Comprobación de tipos |
 | `npm run build` | Versión para publicar en `dist/` |

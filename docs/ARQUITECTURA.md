@@ -55,13 +55,22 @@ El SQL completo, listo para pegar en Supabase, está en [`supabase/schema.sql`](
 
 ```mermaid
 erDiagram
+  TORNEOS ||--o{ PARTIDAS : agrupa
   PARTIDAS ||--o{ JUGADORES : tiene
   PARTIDAS ||--o{ AVISTAMIENTOS : "se registran"
   JUGADORES ||--o| ALQUILERES : lleva
   PARTIDAS ||--o{ ALQUILERES : ""
 
+  TORNEOS {
+    uuid id PK
+    text nombre
+    date fecha
+    text notas
+    timestamptz cerrado_en "null = abierto"
+  }
   PARTIDAS {
     uuid id PK
+    uuid torneo_id FK
     date fecha
     timestamptz hora_salida "tee time"
     smallint hoyo_salida "1 o 10"
@@ -98,6 +107,7 @@ erDiagram
 
 Decisiones importantes:
 
+- **Todo cuelga de `torneos`.** Cada torneo guarda sus partidas y, a través de ellas, jugadores, alquileres, avistamientos y observaciones. Borrar un torneo borra todo lo suyo (`on delete cascade`); cerrarlo solo lo archiva.
 - **`avistamientos` es la tabla de "tiempos".** Cada toque del Marshal crea una fila con la hora exacta. El estado actual de una partida es su último avistamiento (vista `estado_partidas`).
 - **`visto_en` lo pone el dispositivo**, no el servidor. Si no hay cobertura y el dato llega 10 minutos tarde, la hora sigue siendo la real.
 - **Se guarda `retraso_min` y `estado`** en el momento de registrar. Si mañana cambian los umbrales, el histórico no cambia.
@@ -203,8 +213,10 @@ sequenceDiagram
 
 ### Piezas clave
 
-- **`src/datos/operaciones.ts`**: todo cambio es una *operación* (`registrar_avistamiento`, `asignar_alquiler`…). La función `aplicarOperacion` es pura e idempotente.
-- **`src/datos/supabase.ts`**: lee el día con una sola consulta anidada (`partidas` + `jugadores` + `alquileres` + `avistamientos`), escucha los cambios de las 4 tablas por Realtime y envía las operaciones mediante una **cola offline** guardada en el dispositivo. Mientras una operación no se ha enviado, la pantalla ya la muestra aplicada.
+- **`src/datos/operaciones.ts`**: todo cambio es una *operación* (`crear_torneo`, `registrar_avistamiento`, `asignar_alquiler`…). La función `aplicarOperacion` es pura e idempotente.
+- **`src/lib/pdf.ts`** + **`src/lib/importar.ts`**: pdf.js saca el texto del PDF línea a línea (respetando los huecos entre columnas) y el intérprete reconoce horas, tee (columna, "Tee 10" o cabecera "SALIDAS POR EL TEE 10") y nombres, descartando licencias, hándicaps, clubes y categorías. Agrupa en una partida los jugadores con la misma hora y tee. Siempre se revisa en pantalla antes de guardar.
+- **`src/lib/exportar.ts`**: CSV para Excel (separador `;`, coma decimal y BOM para las tildes).
+- **`src/datos/supabase.ts`**: lee el torneo en uso con una sola consulta anidada (`partidas` + `jugadores` + `alquileres` + `avistamientos`), escucha los cambios de las 5 tablas por Realtime y envía las operaciones mediante una **cola offline** guardada en el dispositivo. Mientras una operación no se ha enviado, la pantalla ya la muestra aplicada.
 - **`src/datos/demo.ts`**: misma interfaz pero sin servidor (localStorage + BroadcastChannel). Sirve para probar la app sin configurar nada.
 - **`src/datos/DatosProvider.tsx`**: contexto de React. Une los datos del servidor y la cola local, y recarga cuando llega un aviso de tiempo real (agrupando avisos seguidos).
 - **`src/paginas/Oficina.tsx`**: dashboard del Caddy Master. Indicadores arriba (que también filtran), mapa en el centro, lista o ficha de la partida a la derecha y "últimos avistamientos" debajo.
@@ -219,7 +231,10 @@ src/
 ├── lib/
 │   ├── ritmo.ts             ← LÓGICA DEL RITMO (+ tests)
 │   ├── partidas.ts          ← estado actual de una partida, búsqueda, avisos de alquiler
-│   ├── hora.ts, ids.ts
+│   ├── importar.ts          ← interpreta el horario de salidas (+ tests)
+│   ├── pdf.ts               ← saca el texto del PDF (pdf.js)
+│   ├── exportar.ts          ← CSV para Excel (+ tests)
+│   ├── hora.ts, ids.ts, textos.ts
 ├── datos/
 │   ├── tipos.ts             ← tipos = columnas de la BD
 │   ├── operaciones.ts       ← cambios posibles (+ tests)
@@ -229,7 +244,8 @@ src/
 │   ├── DatosProvider.tsx    ← contexto React (tiempo real)
 │   └── sesion.ts            ← inicio de sesión
 ├── componentes/             ← mapa, tarjetas, alquileres, observaciones, historial…
-└── paginas/                 ← Inicio, Login, MarshalLista, MarshalPartida, Oficina, Calibrar
+└── paginas/                 ← Inicio, Login, MarshalLista, MarshalPartida, Oficina, Calibrar,
+                                Torneos, ImportarTorneo, InformeTorneo
 supabase/
 ├── schema.sql               ← tablas, RLS y Realtime
 └── datos-prueba.sql

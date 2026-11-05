@@ -1,7 +1,10 @@
 /** Funciones de ayuda sobre una partida: su estado actual, su etiqueta, etc. */
 import { NOMBRE_ALQUILER, type Avistamiento, type Partida, type TipoAlquiler } from '../datos/tipos';
 import { hhmm } from './hora';
-import { type EstadoRitmo, type PosicionEsperada, posicionEsperada } from './ritmo';
+import { duracionVueltaMin, type EstadoRitmo, type PosicionEsperada, posicionEsperada } from './ritmo';
+
+/** Si nadie marca una partida como terminada, se da por terminada este tiempo después de su fin ideal. */
+const MARGEN_FIN_AUTOMATICO_MIN = 60;
 
 export type Fase = 'pendiente' | 'en_juego' | 'terminada';
 
@@ -24,8 +27,9 @@ export function ultimoAvistamiento(p: Partida): Avistamiento | null {
 export function resumirPartida(p: Partida, ahora: Date): ResumenPartida {
   const ultimo = ultimoAvistamiento(p);
   const esperada = posicionEsperada(salidaDe(p), ahora);
+  const minutosDesdeSalida = (ahora.getTime() - new Date(p.hora_salida).getTime()) / 60_000;
   let fase: Fase = 'en_juego';
-  if (p.terminada_en) fase = 'terminada';
+  if (p.terminada_en || minutosDesdeSalida > duracionVueltaMin() + MARGEN_FIN_AUTOMATICO_MIN) fase = 'terminada';
   else if (esperada.fase === 'antes_de_salir' && !ultimo) fase = 'pendiente';
   return { fase, ultimo, estado: ultimo?.estado ?? null, esperada };
 }
@@ -40,10 +44,29 @@ export function nombresJugadores(p: Partida): string {
   return p.jugadores.map((j) => j.nombre).join(', ') || 'Sin jugadores';
 }
 
+/**
+ * Apellido para títulos cortos: "García López, Juan" → "García"; "Ana Ruiz Gil" → "Ruiz";
+ * "Ana Ruiz" → "Ruiz".
+ */
+export function apellidoPrincipal(nombre: string): string {
+  const limpio = nombre.trim();
+  const palabras = limpio.includes(',') ? limpio.split(',')[0].trim().split(/\s+/) : limpio.split(/\s+/);
+  const inicio = limpio.includes(',') ? 0 : palabras.length >= 3 ? 1 : palabras.length - 1;
+  // "De la Fuente": las partículas van con el apellido que les sigue.
+  const apellido: string[] = [];
+  for (const palabra of palabras.slice(inicio)) {
+    apellido.push(palabra);
+    if (!PARTICULAS.has(palabra.toLowerCase())) break;
+  }
+  return apellido.join(' ');
+}
+
+const PARTICULAS = new Set(['de', 'del', 'la', 'las', 'los', 'da', 'das', 'do', 'dos', 'van', 'von', 'di']);
+
 /** Título legible: el nombre de la partida o, si no tiene, los apellidos de los jugadores. */
 export function tituloPartida(p: Partida): string {
   if (p.nombre.trim()) return p.nombre.trim();
-  const apellidos = p.jugadores.map((j) => j.nombre.trim().split(/\s+/).at(-1)).filter(Boolean);
+  const apellidos = p.jugadores.map((j) => apellidoPrincipal(j.nombre)).filter(Boolean);
   return apellidos.join(' · ') || 'Partida sin nombre';
 }
 

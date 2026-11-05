@@ -1,7 +1,7 @@
 /** Alta de una partida nueva (hora de salida, tee, jugadores y alquileres). */
 import { useState, type FormEvent } from 'react';
 import { useDatos } from '../datos/DatosProvider';
-import type { Jugador, Partida } from '../datos/tipos';
+import type { Jugador, Partida, Torneo } from '../datos/tipos';
 import { combinarFechaHora } from '../lib/hora';
 import { nuevoId } from '../lib/ids';
 import { avisoAlquilerOcupado } from '../lib/partidas';
@@ -23,8 +23,10 @@ interface FilaFormulario {
 
 const filaVacia = (): FilaFormulario => ({ nombre: '', alquiler: { tipo: null, numero: '' } });
 
-export function FormularioPartida({ onCerrar }: { onCerrar: () => void }) {
-  const { ejecutar, fecha, partidas } = useDatos();
+/** Alta de una partida dentro del torneo indicado. */
+export function FormularioPartida({ torneo, onCerrar }: { torneo: Torneo; onCerrar: () => void }) {
+  const { ejecutar, partidas } = useDatos();
+  const fecha = torneo.fecha;
   const [hora, setHora] = useState(proximaSalida);
   const [hoyoSalida, setHoyoSalida] = useState(1);
   const [nombre, setNombre] = useState('');
@@ -56,6 +58,7 @@ export function FormularioPartida({ onCerrar }: { onCerrar: () => void }) {
     });
     const partida: Partida = {
       id: partidaId,
+      torneo_id: torneo.id,
       fecha,
       hora_salida: combinarFechaHora(fecha, hora),
       hoyo_salida: hoyoSalida,
@@ -78,9 +81,10 @@ export function FormularioPartida({ onCerrar }: { onCerrar: () => void }) {
         className="max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl"
         aria-labelledby="titulo-nueva-partida"
       >
-        <h2 id="titulo-nueva-partida" className="mb-4 text-xl font-bold text-slate-900">
+        <h2 id="titulo-nueva-partida" className="text-xl font-bold text-slate-900">
           Nueva partida
         </h2>
+        <p className="mb-4 text-sm text-slate-500">{torneo.nombre}</p>
 
         <div className="grid gap-4 sm:grid-cols-3">
           <label className="block text-sm font-semibold text-slate-700">

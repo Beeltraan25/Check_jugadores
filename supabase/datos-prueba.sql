@@ -1,12 +1,19 @@
 -- Datos de prueba para HOY (opcional). Ejecútalo en el SQL Editor después de schema.sql.
--- Crea 3 partidas que salieron hace ~2 h, ~1 h y ~30 min, con jugadores, un buggy y avistamientos.
+-- Crea un torneo con 3 partidas que salieron hace ~2 h, ~1 h y ~30 min, con jugadores,
+-- un buggy y avistamientos.
 -- Las horas usan la zona de Madrid; cámbiala si tu campo está en otra.
 
 with zona as (select 'Europe/Madrid'::text as tz),
 ahora as (select (now() at time zone (select tz from zona)) as local),
+torneo as (
+  insert into public.torneos (nombre, fecha)
+  select 'Torneo de prueba', (select local::date from ahora)
+  returning id
+),
 nuevas as (
-  insert into public.partidas (fecha, hora_salida, hoyo_salida, nombre)
-  select (select local::date from ahora),
+  insert into public.partidas (torneo_id, fecha, hora_salida, hoyo_salida, nombre)
+  select (select id from torneo),
+         (select local::date from ahora),
          date_trunc('minute', now()) - make_interval(mins => m),
          1,
          n

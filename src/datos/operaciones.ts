@@ -8,9 +8,20 @@
  * Las operaciones son idempotentes (aplicarlas dos veces da lo mismo), por eso se pueden
  * reintentar sin miedo a duplicar datos.
  */
-import type { Alquiler, Avistamiento, Partida } from './tipos';
+import type { Alquiler, Avistamiento, Partida, Torneo } from './tipos';
+
+/** Lo que la app tiene cargado: la lista de torneos y las partidas del torneo en uso. */
+export interface Estado {
+  torneos: Torneo[];
+  partidas: Partida[];
+}
+
+export type CambiosTorneo = Partial<Pick<Torneo, 'nombre' | 'fecha' | 'notas' | 'cerrado_en'>>;
 
 export type Operacion =
+  | { tipo: 'crear_torneo'; torneo: Torneo; partidas: Partida[] }
+  | { tipo: 'actualizar_torneo'; torneoId: string; cambios: CambiosTorneo }
+  | { tipo: 'eliminar_torneo'; torneoId: string }
   | { tipo: 'crear_partida'; partida: Partida }
   | { tipo: 'eliminar_partida'; partidaId: string }
   | { tipo: 'iniciar_revision'; partidaId: string; cuando: string | null }
@@ -22,6 +33,8 @@ export type Operacion =
 
 const porHoraSalida = (a: Partida, b: Partida) => a.hora_salida.localeCompare(b.hora_salida);
 const porHoraVisto = (a: Avistamiento, b: Avistamiento) => a.visto_en.localeCompare(b.visto_en);
+/** Más recientes primero: por fecha y, a igual fecha, por cuándo se crearon. */
+const porFechaDesc = (a: Torneo, b: Torneo) => b.fecha.localeCompare(a.fecha) || b.creado_en.localeCompare(a.creado_en);
 
 /** Ordena partidas por hora de salida, jugadores por orden y avistamientos por hora. */
 export function normalizarPartidas(partidas: Partida[]): Partida[] {
@@ -32,11 +45,26 @@ export function normalizarPartidas(partidas: Partida[]): Partida[] {
   }));
 }
 
-export function aplicarOperacion(partidas: Partida[], op: Operacion): Partida[] {
+export function ordenarTorneos(torneos: Torneo[]): Torneo[] {
+  return [...torneos].sort(porFechaDesc);
+}
+
+function aplicarAPartidas(partidas: Partida[], op: Operacion): Partida[] {
   const editar = (id: string, cambio: (p: Partida) => Partida) =>
     partidas.map((p) => (p.id === id ? cambio(p) : p));
 
   switch (op.tipo) {
+    case 'crear_torneo': {
+      const nuevas = op.partidas.filter((n) => !partidas.some((p) => p.id === n.id));
+      return nuevas.length ? [...partidas, ...nuevas].sort(porHoraSalida) : partidas;
+    }
+
+    case 'eliminar_torneo':
+      return partidas.filter((p) => p.torneo_id !== op.torneoId);
+
+    case 'actualizar_torneo':
+      return partidas;
+
     case 'crear_partida':
       if (partidas.some((p) => p.id === op.partida.id)) return partidas;
       return [...partidas, op.partida].sort(porHoraSalida);
@@ -74,4 +102,21 @@ export function aplicarOperacion(partidas: Partida[], op: Operacion): Partida[] 
     case 'terminar_partida':
       return editar(op.partidaId, (p) => ({ ...p, terminada_en: op.cuando, revision_iniciada_en: null }));
   }
+}
+
+function aplicarATorneos(torneos: Torneo[], op: Operacion): Torneo[] {
+  switch (op.tipo) {
+    case 'crear_torneo':
+      return torneos.some((t) => t.id === op.torneo.id) ? torneos : ordenarTorneos([...torneos, op.torneo]);
+    case 'actualizar_torneo':
+      return ordenarTorneos(torneos.map((t) => (t.id === op.torneoId ? { ...t, ...op.cambios } : t)));
+    case 'eliminar_torneo':
+      return torneos.filter((t) => t.id !== op.torneoId);
+    default:
+      return torneos;
+  }
+}
+
+export function aplicarOperacion(estado: Estado, op: Operacion): Estado {
+  return { torneos: aplicarATorneos(estado.torneos, op), partidas: aplicarAPartidas(estado.partidas, op) };
 }

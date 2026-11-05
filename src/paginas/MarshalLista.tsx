@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Cabecera } from '../componentes/basicos';
 import { TarjetaPartida } from '../componentes/TarjetaPartida';
+import { AvisoFechaTorneo, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
 import { useDatos } from '../datos/DatosProvider';
 import { useAhora } from '../hooks/useAhora';
 import { normalizarBusqueda, resumirPartida, textoBusqueda } from '../lib/partidas';
 
 /** Lista de partidas en juego para el Marshal (pensada para móvil/tablet). */
 export function MarshalLista() {
-  const { partidas, cargando } = useDatos();
+  const { partidas, cargando, torneo } = useDatos();
   const ahora = useAhora(15_000);
   const [busqueda, setBusqueda] = useState('');
   const [verTerminadas, setVerTerminadas] = useState(false);
@@ -22,8 +23,10 @@ export function MarshalLista() {
 
   return (
     <div className="min-h-dvh">
-      <Cabecera titulo="Marshal" volverA="/" />
+      <Cabecera titulo={<TituloTorneo seccion="Marshal" nombre={torneo?.nombre} />} volverA="/" />
+      <AvisoFechaTorneo torneo={torneo} />
       <main className="mx-auto max-w-3xl space-y-3 px-3 py-4">
+        {!torneo && !cargando && <SinTorneo />}
         <input
           type="search"
           value={busqueda}

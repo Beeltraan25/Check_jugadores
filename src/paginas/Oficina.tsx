@@ -11,6 +11,7 @@ import { LeyendaMapa, MapaCampo } from '../componentes/MapaCampo';
 import { EditorObservaciones } from '../componentes/Observaciones';
 import { RegistroAvistamiento } from '../componentes/RegistroAvistamiento';
 import { TarjetaPartida } from '../componentes/TarjetaPartida';
+import { AvisoFechaTorneo, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
 import { useDatos } from '../datos/DatosProvider';
 import type { Partida } from '../datos/tipos';
 import { useAhora } from '../hooks/useAhora';
@@ -51,7 +52,7 @@ const NOMBRE_FILTRO: Record<Filtro, string> = {
 };
 
 export function Oficina() {
-  const { partidas, cargando } = useDatos();
+  const { partidas, cargando, torneo } = useDatos();
   const ahora = useAhora(15_000);
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<Filtro>('activas');
@@ -91,22 +92,25 @@ export function Oficina() {
     <div className="min-h-dvh">
       <Cabecera
         volverA="/"
-        titulo={
-          <>
-            Caddy Master <span className="font-medium text-campo-100">· Ritmo de juego</span>
-          </>
-        }
+        titulo={<TituloTorneo seccion="Caddy Master" nombre={torneo?.nombre} />}
         acciones={
           <button
             type="button"
+            disabled={!torneo}
             onClick={() => setCreando(true)}
-            className="min-h-10 rounded-lg bg-yellow-300 px-4 text-sm font-bold text-campo-900 shadow hover:bg-yellow-200"
+            className="min-h-10 rounded-lg bg-yellow-300 px-4 text-sm font-bold text-campo-900 shadow hover:bg-yellow-200 disabled:opacity-40"
           >
             + Nueva partida
           </button>
         }
       />
 
+      <AvisoFechaTorneo torneo={torneo} />
+      {!torneo && !cargando ? (
+        <div className="px-4 py-10">
+          <SinTorneo />
+        </div>
+      ) : (
       <div className="mx-auto max-w-[1800px] space-y-4 px-4 py-4">
         {/* Indicadores (también sirven de filtro para la lista) */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-8">
@@ -210,7 +214,9 @@ export function Oficina() {
         </div>
       </div>
 
-      {creando && <FormularioPartida onCerrar={() => setCreando(false)} />}
+      )}
+
+      {creando && torneo && <FormularioPartida torneo={torneo} onCerrar={() => setCreando(false)} />}
     </div>
   );
 }

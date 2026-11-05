@@ -8,6 +8,9 @@ import { MarshalLista } from './paginas/MarshalLista';
 import { MarshalPartida } from './paginas/MarshalPartida';
 import { Oficina } from './paginas/Oficina';
 import { Calibrar } from './paginas/Calibrar';
+import { Torneos } from './paginas/Torneos';
+import { ImportarTorneo } from './paginas/ImportarTorneo';
+import { InformeTorneo } from './paginas/InformeTorneo';
 
 export function App() {
   const sesion = useSesion();
@@ -25,6 +28,9 @@ export function App() {
         <Route path="/marshal/:id" element={<MarshalPartida />} />
         <Route path="/oficina" element={<Oficina />} />
         <Route path="/calibrar" element={<Calibrar />} />
+        <Route path="/torneos" element={<Torneos />} />
+        <Route path="/torneos/importar" element={<ImportarTorneo />} />
+        <Route path="/torneos/:id" element={<InformeTorneo />} />
         <Route path="*" element={<Inicio />} />
       </Routes>
       <AvisoFlotante />
