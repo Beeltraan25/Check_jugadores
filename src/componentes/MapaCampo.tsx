@@ -107,13 +107,14 @@ export function MapaCampo({ partidas, ahora, seleccionada, onSeleccionar, onClic
                 onSeleccionar?.(partida.id);
               }}
               title={`${tituloPartida(partida)} · salida ${etiquetaPartida(partida)}\nVistos en el hoyo ${ultimo.hoyo} (${NOMBRE_POSICION[ultimo.posicion]}) a las ${hhmm(ultimo.visto_en)}, ${haceCuanto(ultimo.visto_en, ahora)}\n${estilo.etiqueta} · ${textoRetraso(ultimo.retraso_min)}`}
-              className={`absolute flex -translate-x-1/2 flex-col items-center whitespace-nowrap rounded-lg border-2 px-1.5 py-0.5 text-white shadow-md transition-transform hover:scale-110 ${
+              className={`absolute flex -translate-x-1/2 flex-col items-center whitespace-nowrap rounded-md border px-1 text-white sm:rounded-lg sm:border-2 sm:px-1.5 sm:py-0.5 shadow-md transition-transform hover:scale-110 ${
                 activo ? 'pulso scale-110 border-yellow-300' : 'border-white'
               } ${antiguo && !activo ? 'opacity-60' : ''}`}
               style={{ background: estilo.color, ...(haciaAbajo ? { top: desplazamiento } : { bottom: desplazamiento }) }}
             >
               <span className="cifras text-[11px] font-bold leading-tight sm:text-xs">{hhmm(partida.hora_salida)}</span>
-              <span className="cifras text-[9px] leading-tight opacity-95 sm:text-[10px]">
+              {/* En el móvil el pin solo lleva la hora de salida, para que no se tapen entre ellos */}
+              <span className="cifras hidden text-[10px] leading-tight opacity-95 sm:block">
                 H{ultimo.hoyo} · {hhmm(ultimo.visto_en)}
               </span>
             </button>

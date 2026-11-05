@@ -11,6 +11,7 @@ import { LeyendaMapa, MapaCampo } from '../componentes/MapaCampo';
 import { EditorObservaciones } from '../componentes/Observaciones';
 import { RegistroAvistamiento } from '../componentes/RegistroAvistamiento';
 import { TarjetaPartida } from '../componentes/TarjetaPartida';
+import { Indicador } from '../componentes/Indicador';
 import { AvisoFechaTorneo, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
 import { useDatos } from '../datos/DatosProvider';
 import type { Partida } from '../datos/tipos';
@@ -219,33 +220,6 @@ export function Oficina() {
 
       {creando && torneo && <FormularioPartida torneo={torneo} onCerrar={() => setCreando(false)} />}
     </div>
-  );
-}
-
-function Indicador({
-  titulo,
-  valor,
-  color = 'text-slate-900',
-  activo = false,
-  onClick,
-}: {
-  titulo: string;
-  valor: number | string;
-  color?: string;
-  activo?: boolean;
-  onClick?: () => void;
-}) {
-  const Elemento = onClick ? 'button' : 'div';
-  return (
-    <Elemento
-      {...(onClick ? { type: 'button' as const, onClick, 'aria-pressed': activo } : {})}
-      className={`rounded-xl border bg-white px-3 py-2 text-left shadow-sm transition ${
-        activo ? 'border-campo-600 ring-2 ring-campo-200' : 'border-slate-200'
-      } ${onClick ? 'hover:border-slate-300' : ''}`}
-    >
-      <span className="block text-xs font-semibold uppercase tracking-wide text-slate-500">{titulo}</span>
-      <span className={`cifras block text-2xl font-black ${color}`}>{valor}</span>
-    </Elemento>
   );
 }
 
