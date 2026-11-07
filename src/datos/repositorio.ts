@@ -19,6 +19,8 @@ export interface Repositorio {
   listarTorneos(): Promise<TorneoConResumen[]>;
   /** Partidas de un torneo con jugadores, alquileres y avistamientos. */
   cargarTorneo(torneoId: string): Promise<Partida[]>;
+  /** Partidas de varios torneos a la vez (comparativa de organizadores). */
+  cargarVariosTorneos(torneoIds: string[]): Promise<Partida[]>;
   /** Avisa cada vez que algo cambia en la base de datos (tiempo real). Devuelve cómo dejar de escuchar. */
   suscribir(alCambiar: () => void): () => void;
   /** Guarda un cambio. Con Supabase pasa por la cola offline. */

@@ -10,7 +10,7 @@ export function AvisoFlotante() {
     <div
       role="alert"
       style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
-      className="fixed inset-x-3 z-50 mx-auto flex max-w-lg items-start gap-3 rounded-xl bg-red-700 p-4 text-white shadow-xl"
+      className="no-imprimir fixed inset-x-3 z-50 mx-auto flex max-w-lg items-start gap-3 rounded-xl bg-red-700 p-4 text-white shadow-xl"
     >
       <p className="flex-1 text-sm">{mensaje}</p>
       {aviso && (

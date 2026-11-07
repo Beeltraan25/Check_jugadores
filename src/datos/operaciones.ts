@@ -17,7 +17,7 @@ export interface Estado {
   partidas: Partida[];
 }
 
-export type CambiosTorneo = Partial<Pick<Torneo, 'nombre' | 'fecha' | 'notas' | 'cerrado_en'>>;
+export type CambiosTorneo = Partial<Pick<Torneo, 'nombre' | 'organizador' | 'fecha' | 'notas' | 'cerrado_en'>>;
 
 export type Operacion =
   | { tipo: 'crear_torneo'; torneo: Torneo; partidas: Partida[] }

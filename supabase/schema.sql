@@ -15,6 +15,7 @@ create type public.tipo_alquiler as enum ('carro_electrico', 'buggy');
 create table public.torneos (
   id          uuid primary key default gen_random_uuid(),
   nombre      text        not null,
+  organizador text        not null default '',              -- empresa / agencia que organiza
   fecha       date        not null,
   notas       text        not null default '',
   creado_en   timestamptz not null default now(),

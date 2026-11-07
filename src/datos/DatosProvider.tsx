@@ -76,6 +76,8 @@ interface ContextoDatos {
   partidas: Partida[];
   /** Lee las partidas de cualquier torneo (para los informes de torneos pasados). */
   cargarPartidasDe: (torneoId: string) => Promise<Partida[]>;
+  /** Lee las partidas de varios torneos a la vez (comparativa de organizadores). */
+  cargarPartidasDeVarios: (torneoIds: string[]) => Promise<Partida[]>;
   /** Sube cada vez que llegan datos nuevos (para que los informes se refresquen). */
   revision: number;
   cargando: boolean;
@@ -183,6 +185,19 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
     [repo],
   );
 
+  const cargarPartidasDeVarios = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return [];
+      const desdeServidor = await repo.cargarVariosTorneos(ids);
+      const incluidos = new Set(ids);
+      return repo
+        .operacionesLocales()
+        .reduce(aplicarOperacion, { torneos: [], partidas: desdeServidor })
+        .partidas.filter((p) => incluidos.has(p.torneo_id));
+    },
+    [repo],
+  );
+
   const valor: ContextoDatos = {
     torneos: vista.torneos,
     numPartidas: (id) => (id === torneoId ? partidas.length : (conteos[id] ?? 0)),
@@ -193,6 +208,7 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
     },
     partidas,
     cargarPartidasDe,
+    cargarPartidasDeVarios,
     revision,
     cargando,
     errorCarga,

@@ -99,3 +99,48 @@ summary.list-none::-webkit-details-marker {
     animation: none;
   }
 }
+
+/* Impresión / "Guardar como PDF" de los informes */
+@media print {
+  @page {
+    margin: 12mm;
+  }
+  html,
+  body {
+    background: #ffffff !important;
+    /* Que se impriman los colores de verde, ámbar y rojo */
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  header.sticky,
+  .no-imprimir {
+    display: none !important;
+  }
+  .salto-evitar {
+    break-inside: avoid;
+  }
+  /* Tablas: en papel se ajustan al ancho (sin barra de desplazamiento) y se pueden partir */
+  .tabla-informe-contenedor {
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .tabla-informe {
+    min-width: 0 !important;
+    font-size: 9pt;
+  }
+  .tabla-informe tr {
+    break-inside: avoid;
+  }
+  .tabla-informe span {
+    white-space: normal !important;
+  }
+  /* Los detalles plegados se imprimen abiertos */
+  details > *:not(summary) {
+    display: block !important;
+  }
+  .shadow-sm,
+  .shadow-md {
+    box-shadow: none !important;
+  }
+}

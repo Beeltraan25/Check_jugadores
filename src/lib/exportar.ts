@@ -6,6 +6,7 @@ import { NOMBRE_ALQUILER, type Partida, type Torneo } from '../datos/tipos';
 import { hhmm } from './hora';
 import { NOMBRE_POSICION } from './ritmo';
 import { ESTADO_TEXTO } from './textos';
+import type { ResumenOrganizador, ResumenRitmoTorneo } from './informes';
 
 type Celda = string | number | null | undefined;
 
@@ -118,4 +119,88 @@ export async function descargarCsv(nombre: string, contenido: string) {
   enlace.click();
   enlace.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// --- Informes de ritmo SIN NOMBRES -------------------------------------------------
+
+const unDecimal = (n: number | null) => (n === null ? null : Math.round(n * 10) / 10);
+const siNo = (v: boolean) => (v ? 'Sí' : 'No');
+
+/** Una fila por partida, sin nombres de jugadores. */
+export function csvRitmoPartidas(torneo: Torneo, resumen: ResumenRitmoTorneo): string {
+  const cabecera = [
+    'Torneo', 'Organizador', 'Fecha', 'Partida', 'Hora salida', 'Tee', 'Jugadores', 'Buggies', 'Carros', 'Vistas',
+    'Ritmo (min/hoyo)', 'Duración vuelta (min)', 'Duración real', 'Retraso medio (min)', 'Peor retraso (min)',
+    'Retraso final (min)', 'Evolución (min)', 'Estado final', 'Llegó a rojo', 'Avisada', 'Observaciones',
+  ];
+  const filas = resumen.partidas.map((p) => [
+    torneo.nombre,
+    torneo.organizador,
+    torneo.fecha,
+    p.etiqueta,
+    hhmm(p.horaSalida),
+    p.hoyoSalida,
+    p.jugadores,
+    p.buggies,
+    p.carros,
+    p.vistas.length,
+    unDecimal(p.minutosPorHoyo),
+    p.duracionMin === null ? null : Math.round(p.duracionMin),
+    p.duracionMin === null ? '' : p.duracionReal ? 'Real' : 'Estimada',
+    unDecimal(p.retrasoMedio),
+    unDecimal(p.peorRetraso),
+    unDecimal(p.retrasoFinal),
+    unDecimal(p.evolucion),
+    p.estadoFinal ? ESTADO_TEXTO[p.estadoFinal] : 'Sin ver',
+    siNo(p.llegoARojo),
+    siNo(p.avisada),
+    p.observaciones,
+  ]);
+  return aCsv([cabecera, ...filas]);
+}
+
+/** Una fila por cada vista del Marshal, sin nombres. */
+export function csvRitmoVistas(torneo: Torneo, resumen: ResumenRitmoTorneo): string {
+  const cabecera = [
+    'Torneo', 'Organizador', 'Fecha', 'Partida', 'Hora salida', 'Tee', 'Hoyo', 'Posición', 'Revisión desde',
+    'Visto a las', 'Retraso (min)', 'Estado',
+  ];
+  const filas = resumen.partidas.flatMap((p) =>
+    p.vistas.map((v) => [
+      torneo.nombre,
+      torneo.organizador,
+      torneo.fecha,
+      p.etiqueta,
+      hhmm(p.horaSalida),
+      p.hoyoSalida,
+      v.hoyo,
+      NOMBRE_POSICION[v.posicion],
+      v.revision_iniciada_en ? hhmm(v.revision_iniciada_en) : '',
+      hhmm(v.visto_en),
+      v.retraso_min,
+      ESTADO_TEXTO[v.estado],
+    ]),
+  );
+  return aCsv([cabecera, ...filas]);
+}
+
+/** Ranking de organizadores (del más rápido al más lento). */
+export function csvOrganizadores(resumenes: ResumenOrganizador[]): string {
+  const cabecera = [
+    'Puesto', 'Organizador', 'Torneos', 'Partidas', 'Partidas con ritmo', 'Ritmo medio (min/hoyo)',
+    'Duración media (min)', 'Retraso final medio (min)', '% partidas en rojo', 'Partidas avisadas',
+  ];
+  const filas = resumenes.map((o, i) => [
+    o.minutosPorHoyo === null ? '' : i + 1,
+    o.nombre,
+    o.torneos.length,
+    o.numPartidas,
+    o.partidasConRitmo,
+    unDecimal(o.minutosPorHoyo),
+    o.duracionMedia === null ? null : Math.round(o.duracionMedia),
+    unDecimal(o.retrasoMedioFinal),
+    o.porcentajeRojo === null ? null : Math.round(o.porcentajeRojo),
+    o.avisadas,
+  ]);
+  return aCsv([cabecera, ...filas]);
 }

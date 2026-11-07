@@ -5,6 +5,7 @@ import type { Avistamiento, Partida, Torneo } from './tipos';
 const torneo: Torneo = {
   id: 't1',
   nombre: 'Torneo de otoño',
+  organizador: '',
   fecha: '2026-05-10',
   notas: '',
   creado_en: '2026-05-01T10:00:00.000Z',

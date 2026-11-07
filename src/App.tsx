@@ -11,6 +11,8 @@ import { Calibrar } from './paginas/Calibrar';
 import { Torneos } from './paginas/Torneos';
 import { ImportarTorneo } from './paginas/ImportarTorneo';
 import { InformeTorneo } from './paginas/InformeTorneo';
+import { InformeRitmo } from './paginas/InformeRitmo';
+import { Organizadores } from './paginas/Organizadores';
 
 export function App() {
   const sesion = useSesion();
@@ -31,6 +33,8 @@ export function App() {
         <Route path="/torneos" element={<Torneos />} />
         <Route path="/torneos/importar" element={<ImportarTorneo />} />
         <Route path="/torneos/:id" element={<InformeTorneo />} />
+        <Route path="/torneos/:id/ritmo" element={<InformeRitmo />} />
+        <Route path="/organizadores" element={<Organizadores />} />
         <Route path="*" element={<Inicio />} />
       </Routes>
       <AvisoFlotante />

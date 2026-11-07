@@ -13,6 +13,7 @@ import { combinarFechaHora, fechaLocal } from '../lib/hora';
 import { nuevoId } from '../lib/ids';
 import { interpretarHorario, type PartidaImportada } from '../lib/importar';
 import { leerLineasPdf } from '../lib/pdf';
+import { CampoOrganizador } from '../componentes/Organizador';
 
 const MAX_JUGADORES = 4;
 
@@ -26,6 +27,7 @@ export function ImportarTorneo() {
   const { ejecutar, elegirTorneo } = useDatos();
   const navegar = useNavigate();
   const [nombre, setNombre] = useState('');
+  const [organizador, setOrganizador] = useState('');
   const [fecha, setFecha] = useState(fechaLocal());
   const [filas, setFilas] = useState<Fila[] | null>(null);
   const [ignoradas, setIgnoradas] = useState<string[]>([]);
@@ -76,6 +78,7 @@ export function ImportarTorneo() {
     const torneo: Torneo = {
       id: nuevoId(),
       nombre: nombre.trim() || `Torneo ${fecha}`,
+      organizador: organizador.trim(),
       fecha,
       notas: '',
       creado_en: new Date().toISOString(),
@@ -143,7 +146,7 @@ export function ImportarTorneo() {
         {filas && (
           <>
             <Seccion titulo="2. Datos del torneo">
-              <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+              <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
                 <label className="text-sm font-semibold text-slate-700">
                   Nombre del torneo
                   <input
@@ -152,6 +155,7 @@ export function ImportarTorneo() {
                     className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3"
                   />
                 </label>
+                <CampoOrganizador valor={organizador} onCambiar={setOrganizador} />
                 <label className="text-sm font-semibold text-slate-700">
                   Fecha
                   <input

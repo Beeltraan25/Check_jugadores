@@ -8,6 +8,7 @@ import type { Torneo } from '../datos/tipos';
 import { fechaLocal } from '../lib/hora';
 import { nuevoId } from '../lib/ids';
 import { fechaLarga } from '../lib/textos';
+import { CampoOrganizador } from '../componentes/Organizador';
 
 export function Torneos() {
   const { torneos, torneo: enUso, elegirTorneo, numPartidas, ejecutar, cargando } = useDatos();
@@ -45,6 +46,12 @@ export function Torneos() {
           >
             + Torneo vacío
           </button>
+          <Link
+            to="/organizadores"
+            className="inline-flex min-h-12 items-center rounded-xl border-2 border-slate-300 bg-white px-5 font-bold text-slate-800 hover:bg-slate-50"
+          >
+            🏁 Comparar organizadores
+          </Link>
           {modoDatos === 'demo' && (
             <button
               type="button"
@@ -88,7 +95,16 @@ export function Torneos() {
                   <div className="min-w-0">
                     <h2 className="text-lg font-bold text-slate-900">{t.nombre}</h2>
                     <p className="text-sm text-slate-600">{fechaLarga(t.fecha)}</p>
-                    <p className="text-sm text-slate-500">{numPartidas(t.id)} partidas</p>
+                    <p className="text-sm text-slate-500">
+                      {t.organizador ? (
+                        <>
+                          Organiza <strong className="text-slate-700">{t.organizador}</strong> ·{' '}
+                        </>
+                      ) : (
+                        <span className="text-amber-700">Sin organizador · </span>
+                      )}
+                      {numPartidas(t.id)} partidas
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {esElEnUso && (
@@ -117,7 +133,13 @@ export function Torneos() {
                     to={`/torneos/${t.id}`}
                     className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"
                   >
-                    Ver informe
+                    Informe con nombres
+                  </Link>
+                  <Link
+                    to={`/torneos/${t.id}/ritmo`}
+                    className="inline-flex min-h-10 items-center rounded-lg border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"
+                  >
+                    Informe de ritmo (sin nombres)
                   </Link>
                   <button
                     type="button"
@@ -157,6 +179,7 @@ export function Torneos() {
 function FormularioTorneoVacio({ onCreado }: { onCreado: (t: Torneo) => void }) {
   const { ejecutar } = useDatos();
   const [nombre, setNombre] = useState('');
+  const [organizador, setOrganizador] = useState('');
   const [fecha, setFecha] = useState(fechaLocal());
 
   const crear = (e: FormEvent) => {
@@ -164,6 +187,7 @@ function FormularioTorneoVacio({ onCreado }: { onCreado: (t: Torneo) => void }) 
     const torneo: Torneo = {
       id: nuevoId(),
       nombre: nombre.trim() || `Jornada ${fecha}`,
+      organizador: organizador.trim(),
       fecha,
       notas: '',
       creado_en: new Date().toISOString(),
@@ -174,7 +198,7 @@ function FormularioTorneoVacio({ onCreado }: { onCreado: (t: Torneo) => void }) 
   };
 
   return (
-    <form onSubmit={crear} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_auto_auto]">
+    <form onSubmit={crear} className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-[1fr_1fr_auto_auto]">
       <label className="text-sm font-semibold text-slate-700">
         Nombre
         <input
@@ -184,6 +208,7 @@ function FormularioTorneoVacio({ onCreado }: { onCreado: (t: Torneo) => void }) 
           className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3"
         />
       </label>
+      <CampoOrganizador valor={organizador} onCambiar={setOrganizador} />
       <label className="text-sm font-semibold text-slate-700">
         Fecha
         <input

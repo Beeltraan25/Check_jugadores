@@ -28,6 +28,9 @@ class ErrorDeRed extends Error {}
 
 type Respuesta = { error: PostgrestError | null; status: number };
 
+/** Error de Supabase cuando aún no se ha ejecutado supabase/migraciones/2026-11-07_organizador.sql. */
+const FALTA_COLUMNA_ORGANIZADOR = /organizador/i;
+
 async function comprobar(peticion: PromiseLike<Respuesta>): Promise<void> {
   const { error, status } = await peticion;
   if (!error) return;
@@ -85,6 +88,7 @@ function torneoDesdeFila(f: Torneo & { partidas?: { count: number }[] }): Torneo
   return {
     id: f.id,
     nombre: f.nombre,
+    organizador: f.organizador ?? '',
     fecha: f.fecha,
     notas: f.notas ?? '',
     creado_en: iso(f.creado_en)!,
@@ -114,10 +118,17 @@ async function enviar(op: Operacion): Promise<void> {
   const db = supabase!;
   switch (op.tipo) {
     case 'crear_torneo': {
-      const { id, nombre, fecha, notas, creado_en, cerrado_en } = op.torneo;
-      await comprobar(
-        db.from('torneos').upsert({ id, nombre, fecha, notas, creado_en, cerrado_en }, { onConflict: 'id', ignoreDuplicates: true }),
-      );
+      const { id, nombre, organizador, fecha, notas, creado_en, cerrado_en } = op.torneo;
+      const fila = { id, nombre, organizador, fecha, notas, creado_en, cerrado_en };
+      try {
+        await comprobar(db.from('torneos').upsert(fila, { onConflict: 'id', ignoreDuplicates: true }));
+      } catch (error) {
+        // Base de datos sin la columna "organizador" (falta la migración): se guarda el torneo
+        // igualmente, sin organizador, para no perder la importación.
+        if (error instanceof ErrorDeRed || !FALTA_COLUMNA_ORGANIZADOR.test((error as Error).message)) throw error;
+        const { organizador: _sinColumna, ...sinOrganizador } = fila;
+        await comprobar(db.from('torneos').upsert(sinOrganizador, { onConflict: 'id', ignoreDuplicates: true }));
+      }
       return insertarPartidas(op.partidas);
     }
     case 'actualizar_torneo':
@@ -242,7 +253,10 @@ export function crearRepositorioSupabase(): Repositorio {
           }
           // Error de datos o permisos: reintentar no lo arreglaría. Se descarta y se avisa.
           cola = cola.filter((e) => e !== entrada);
-          emisor.emitir({ tipo: 'error', mensaje: `No se pudo guardar un cambio: ${(error as Error).message}` });
+          const mensaje = FALTA_COLUMNA_ORGANIZADOR.test((error as Error).message)
+            ? 'Para guardar el organizador falta un paso en Supabase: ejecuta en el SQL Editor el archivo supabase/migraciones/2026-11-07_organizador.sql.'
+            : `No se pudo guardar un cambio: ${(error as Error).message}`;
+          emisor.emitir({ tipo: 'error', mensaje });
         }
         guardarCola();
       }
@@ -313,6 +327,20 @@ export function crearRepositorioSupabase(): Repositorio {
         return { ...c, partidas: { ...Object.fromEntries(otros), [torneoId]: partidas } };
       });
       return partidas;
+    },
+
+    async cargarVariosTorneos(torneoIds) {
+      // Para los informes que comparan muchos torneos: de 40 en 40 para no hacer URLs enormes.
+      const partidas: Partida[] = [];
+      for (let i = 0; i < torneoIds.length; i += 40) {
+        const { data, error } = await db
+          .from('partidas')
+          .select('*, jugadores(*, alquileres(*)), avistamientos(*)')
+          .in('torneo_id', torneoIds.slice(i, i + 40));
+        if (error) throw new Error(error.message);
+        partidas.push(...(data as FilaPartida[]).map(desdeFila));
+      }
+      return normalizarPartidas(partidas);
     },
 
     suscribir(alCambiar) {

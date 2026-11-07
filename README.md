@@ -58,6 +58,22 @@ Cada torneo guarda todo lo que se apunta durante el juego. Desde **Torneos** pue
 
 Si el PDF es una foto escaneada (sin texto), no se puede leer: pega el texto en el recuadro de la misma pantalla o crea el torneo vacío y añade las partidas a mano.
 
+## Informes de ritmo sin nombres y comparativa de organizadores
+
+Cada torneo tiene un **organizador** (empresa, agencia, club…). Se indica al importar el PDF o al crear el torneo, y se puede cambiar después desde la lista de torneos o desde cualquier informe. La app sugiere los organizadores ya usados para que se escriban siempre igual.
+
+- **Informe de ritmo (sin nombres)** de cada torneo (Torneos → *Informe de ritmo*): cada partida sale como "Partida 05 · 09:30 · tee 4", sin jugadores. Incluye:
+  - Conclusión automática: ritmo medio, cuánto se pasaron de las 4 h 30 min, partidas en rojo, avisos y hoyo con más retraso.
+  - Indicadores, retraso medio por hoyo y partidas más lentas y más rápidas.
+  - Tabla de todas las partidas: ritmo real (min/hoyo), duración de la vuelta, retraso medio, peor retraso, evolución (si fueron perdiendo o recuperando tiempo) y estado final.
+  - Detalle de cada partida con **todas las vistas** del Marshal y sus **observaciones**. Los nombres que aparezcan en ellas se cambian por «[jugador]».
+  - Botones para **imprimir o guardar en PDF** y **Excel** (partidas y todas las vistas).
+- **Comparar organizadores** (Torneos → *Comparar organizadores*): junta todos los torneos de cada organizador y los ordena **del más rápido al más lento**, con ritmo medio, vuelta media, retraso final medio, % de partidas que llegaron a rojo y partidas avisadas. Se puede filtrar por fechas, imprimir y exportar a Excel.
+
+Cómo se mide el ritmo de una partida: con la última vista del Marshal se compara el tiempo que llevaban jugando con el que deberían llevar para estar en ese punto del campo a 15 min por hoyo. Si la partida se marcó como terminada, se usa la duración real.
+
+> **Si ya tenías la base de datos creada antes del 7/11/2026**, ejecuta una vez en Supabase → SQL Editor el archivo [`supabase/migraciones/2026-11-07_organizador.sql`](supabase/migraciones/2026-11-07_organizador.sql), que añade la columna `organizador`.
+
 ## El mapa del campo
 
 Ya está puesto el mapa de Montealvar (`public/mapa-campo.png`), con el tee y el green de cada hoyo situados en [`src/config/campo.ts`](src/config/campo.ts) y los **par** de la tarjeta del campo (ida 36 + vuelta 36 = 72).

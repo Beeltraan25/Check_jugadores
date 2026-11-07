@@ -5,6 +5,7 @@ import { aCsv, csvAvistamientos, csvPartidas, nombreArchivo } from './exportar';
 const torneo: Torneo = {
   id: 't1',
   nombre: 'Torneo de Otoño',
+  organizador: '',
   fecha: '2026-11-15',
   notas: '',
   creado_en: '2026-11-01T10:00:00.000Z',

@@ -20,7 +20,11 @@ let memoria: Estado | null = null;
 function leer(): Estado {
   try {
     const crudo = localStorage.getItem(CLAVE_DATOS);
-    if (crudo) return JSON.parse(crudo) as Estado;
+    if (crudo) {
+      const estado = JSON.parse(crudo) as Estado;
+      // Torneos guardados antes de existir el campo "organizador".
+      return { ...estado, torneos: estado.torneos.map((t) => ({ ...t, organizador: t.organizador ?? '' })) };
+    }
   } catch {
     /* almacenamiento bloqueado: seguimos en memoria */
   }
@@ -36,15 +40,35 @@ function escribir(estado: Estado) {
   }
 }
 
-/** La primera vez que se abre la demo se crea un torneo de ejemplo. */
-function sembrarSiHaceFalta() {
+/** Ejecuta `accion` una sola vez por navegador (se recuerda con `clave`). */
+function unaVez(clave: string, accion: () => void) {
   try {
-    if (localStorage.getItem(CLAVE_SEMBRADO) === '1') return;
-    localStorage.setItem(CLAVE_SEMBRADO, '1');
+    if (localStorage.getItem(clave) === '1') return;
+    localStorage.setItem(clave, '1');
   } catch {
     if (memoria) return;
   }
-  escribir(aplicarOperacion(leer(), torneoDeEjemplo(new Date())));
+  accion();
+}
+
+/**
+ * La primera vez que se abre la demo se crea un torneo de ejemplo de hoy, y dos torneos
+ * pasados de otros organizadores (uno rápido y otro lento) para probar la comparativa.
+ */
+function sembrarSiHaceFalta() {
+  unaVez(CLAVE_SEMBRADO, () => escribir(aplicarOperacion(leer(), torneoDeEjemplo(new Date()))));
+  unaVez(CLAVE_SEMBRADO + ':organizadores', () => {
+    const haceDias = (dias: number) => {
+      const d = new Date();
+      d.setDate(d.getDate() - dias);
+      d.setHours(15, 30, 0, 0);
+      return d;
+    };
+    let estado = leer();
+    estado = aplicarOperacion(estado, torneoDeEjemplo(haceDias(7), 'Torneo Agencia Green Events', 'Green Events', 6));
+    estado = aplicarOperacion(estado, torneoDeEjemplo(haceDias(14), 'Copa Empresa Ejemplo', 'Empresa Ejemplo S.A.', -2));
+    escribir(estado);
+  });
 }
 
 export function crearRepositorioDemo(): Repositorio {
@@ -66,6 +90,10 @@ export function crearRepositorioDemo(): Repositorio {
     async cargarTorneo(torneoId) {
       return normalizarPartidas(leer().partidas.filter((p) => p.torneo_id === torneoId));
     },
+    async cargarVariosTorneos(torneoIds) {
+      const ids = new Set(torneoIds);
+      return normalizarPartidas(leer().partidas.filter((p) => ids.has(p.torneo_id)));
+    },
     suscribir(alCambiar) {
       recargas.add(alCambiar);
       return () => {
@@ -85,18 +113,29 @@ export function crearRepositorioDemo(): Repositorio {
   };
 }
 
-/** Operación que crea un torneo de ejemplo para hoy con partidas alrededor de la hora actual. */
-export function torneoDeEjemplo(ahora: Date): Operacion {
+/**
+ * Operación que crea un torneo de ejemplo con partidas alrededor de la hora `ahora`.
+ * `ritmoExtra`: minutos de más (o de menos) que suele ir perdiendo cada partida.
+ */
+export function torneoDeEjemplo(
+  ahora: Date,
+  nombre = 'Torneo de ejemplo',
+  organizador = 'Club (torneo social)',
+  ritmoExtra = 0,
+): Operacion {
   const fecha = fechaLocal(ahora);
   const torneo: Torneo = {
     id: nuevoId(),
-    nombre: 'Torneo de ejemplo',
+    nombre,
+    organizador,
     fecha,
     notas: 'Datos inventados para probar la app.',
     creado_en: ahora.toISOString(),
     cerrado_en: null,
   };
-  return { tipo: 'crear_torneo', torneo, partidas: generarPartidasDemo(torneo.id, fecha, ahora) };
+  const partidas = generarPartidasDemo(torneo.id, fecha, ahora, ritmoExtra);
+  const pasado = fechaLocal(ahora) < fechaLocal(new Date());
+  return { tipo: 'crear_torneo', torneo: pasado ? { ...torneo, cerrado_en: ahora.toISOString() } : torneo, partidas };
 }
 
 // ---------------------------------------------------------------------------
@@ -108,7 +147,7 @@ const NOMBRES = ['Javier', 'Lucía', 'Carlos', 'Marta', 'Pablo', 'Elena', 'Andr�
 const APELLIDOS = ['García', 'Martínez', 'López', 'Sánchez', 'Pérez', 'Gómez', 'Fernández', 'Ruiz', 'Díaz', 'Moreno', 'Álvarez', 'Romero', 'Navarro', 'Torres', 'Domínguez', 'Vázquez', 'Ramos', 'Gil', 'Serrano', 'Molina', 'Ortega', 'Delgado', 'Castro', 'Rubio'];
 const NOTAS_LENTAS = ['Avisados por juego lento.', 'Jugador buscando bola en el bosque.', 'Han dejado pasar a la partida de detrás.', 'Esperando en el tee, el green estaba ocupado.'];
 
-function generarPartidasDemo(torneoId: string, fecha: string, ahora: Date): Partida[] {
+function generarPartidasDemo(torneoId: string, fecha: string, ahora: Date, ritmoExtra = 0): Partida[] {
 
   let semilla = Number(fecha.replaceAll('-', '')) % 2147483647;
   const azar = () => {
@@ -149,7 +188,7 @@ function generarPartidasDemo(torneoId: string, fecha: string, ahora: Date): Part
     // Cuánto se retrasa esta partida respecto al ritmo ideal (min): la mitad van bien,
     // unas cuantas en ámbar y alguna en rojo (el retraso crece a lo largo de la vuelta).
     const tipoRitmo = azar();
-    const retrasoReal = tipoRitmo < 0.5 ? -2 + azar() * 5 : tipoRitmo < 0.8 ? 5 + azar() * 4 : 10 + azar() * 6;
+    const retrasoReal = (tipoRitmo < 0.5 ? -2 + azar() * 5 : tipoRitmo < 0.8 ? 5 + azar() * 4 : 10 + azar() * 6) + ritmoExtra;
 
     const avistamientos: Avistamiento[] = [];
     const minutosJugados = (ahora.getTime() - salida.getTime()) / 60_000;

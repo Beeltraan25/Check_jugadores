@@ -52,6 +52,8 @@ export interface Avistamiento {
 export interface Torneo {
   id: string;
   nombre: string;
+  /** Quién organiza el torneo (empresa, agencia, club…). Sirve para comparar organizadores. */
+  organizador: string;
   /** Día del torneo, AAAA-MM-DD. */
   fecha: string;
   notas: string;

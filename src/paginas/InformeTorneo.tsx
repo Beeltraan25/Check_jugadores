@@ -12,8 +12,11 @@ import type { Partida } from '../datos/tipos';
 import { hhmm } from '../lib/hora';
 import { csvAvistamientos, csvPartidas, descargarCsv, nombreArchivo } from '../lib/exportar';
 import { etiquetaPartida, nombresJugadores } from '../lib/partidas';
-import { CONFIG_RITMO, NOMBRE_POSICION, clasificarRetraso, textoRetraso } from '../lib/ritmo';
+import { NOMBRE_POSICION, clasificarRetraso, textoRetraso } from '../lib/ritmo';
 import { fechaLarga } from '../lib/textos';
+import { resumirRitmoTorneo } from '../lib/informes';
+import { RetrasoPorHoyo } from '../componentes/RetrasoPorHoyo';
+import { EditorOrganizador } from '../componentes/Organizador';
 
 const peorRetraso = (p: Partida) => (p.avistamientos.length ? Math.max(...p.avistamientos.map((a) => a.retraso_min)) : null);
 
@@ -49,14 +52,7 @@ export function InformeTorneo() {
   const carros = jugadores.filter((j) => j.alquiler?.tipo === 'carro_electrico').length;
 
   // Retraso medio por hoyo: ayuda a ver en qué hoyos se atasca el campo.
-  const porHoyo = Array.from({ length: CONFIG_RITMO.minutosPorHoyo.length }, (_, i) => {
-    const delHoyo = avistamientos.filter((a) => a.hoyo === i + 1);
-    return {
-      hoyo: i + 1,
-      n: delHoyo.length,
-      media: delHoyo.length ? delHoyo.reduce((s, a) => s + a.retraso_min, 0) / delHoyo.length : null,
-    };
-  });
+  const porHoyo = resumirRitmoTorneo(partidas).porHoyo;
 
   return (
     <div className="min-h-dvh pb-10">
@@ -65,6 +61,7 @@ export function InformeTorneo() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-lg font-semibold text-slate-800">{fechaLarga(torneo.fecha)}</p>
+            <EditorOrganizador torneo={torneo} />
             <p className="text-sm text-slate-500">
               {torneo.cerrado_en ? `Cerrado a las ${hhmm(torneo.cerrado_en)}` : 'Abierto'}
               {torneo.id === enUso?.id && ' · en uso en este dispositivo'}
@@ -83,6 +80,12 @@ export function InformeTorneo() {
                 Usar este torneo
               </button>
             )}
+            <Link
+              to={`/torneos/${torneo.id}/ritmo`}
+              className="inline-flex min-h-11 items-center rounded-xl bg-slate-800 px-4 font-bold text-white hover:bg-slate-900"
+            >
+              Informe de ritmo (sin nombres)
+            </Link>
             <button
               type="button"
               disabled={!partidas.length}
@@ -116,25 +119,7 @@ export function InformeTorneo() {
         </div>
 
         <Seccion titulo="Retraso medio por hoyo">
-          {avistamientos.length === 0 ? (
-            <p className="text-sm text-slate-500">Sin avistamientos todavía.</p>
-          ) : (
-            <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 lg:grid-cols-9">
-              {porHoyo.map(({ hoyo, n, media }) => {
-                const estilo = media === null ? null : estiloDe(clasificarRetraso(media));
-                return (
-                  <li
-                    key={hoyo}
-                    className={`rounded-lg border px-2 py-1.5 text-center ${estilo ? estilo.suave : 'border-slate-100 bg-slate-50 text-slate-400'}`}
-                  >
-                    <span className="block text-xs font-semibold">Hoyo {hoyo}</span>
-                    <span className="cifras block text-base font-black">{media === null ? '—' : textoRetraso(media)}</span>
-                    <span className="block text-[10px] opacity-75">{n === 1 ? '1 vista' : `${n} vistas`}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          <RetrasoPorHoyo porHoyo={porHoyo} />
         </Seccion>
 
         <Seccion titulo="Partidas">
