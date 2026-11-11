@@ -15,9 +15,11 @@ interface Props {
   to?: string;
   onClick?: () => void;
   activa?: boolean;
+  /** Durante una ronda de revisión: true = ya vista en esta ronda, false = falta por ver. */
+  vistaEnRonda?: boolean;
 }
 
-export function TarjetaPartida({ partida, ahora, to, onClick, activa = false }: Props) {
+export function TarjetaPartida({ partida, ahora, to, onClick, activa = false, vistaEnRonda }: Props) {
   const r = resumirPartida(partida, ahora);
   const estilo = estiloDe(r.estado);
   // Destello amarillo cuando entra un avistamiento nuevo en tiempo real.
@@ -53,6 +55,15 @@ export function TarjetaPartida({ partida, ahora, to, onClick, activa = false }: 
           )}
         </p>
         <div className="flex flex-wrap items-center gap-2">
+          {vistaEnRonda !== undefined && r.fase === 'en_juego' && (
+            <span
+              className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold ${
+                vistaEnRonda ? 'bg-sky-600 text-white' : 'bg-white text-sky-800 ring-1 ring-sky-600'
+              }`}
+            >
+              {vistaEnRonda ? '✓ Vista en esta ronda' : 'Falta por ver'}
+            </span>
+          )}
           <ResumenAlquileres partida={partida} />
           {partida.revision_iniciada_en && (
             <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-[11px] font-semibold text-sky-900">

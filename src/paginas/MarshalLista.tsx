@@ -10,7 +10,17 @@ import { TarjetaPartida } from '../componentes/TarjetaPartida';
 import { AvisoFechaTorneo, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
 import { useDatos } from '../datos/DatosProvider';
 import { useAhora } from '../hooks/useAhora';
-import { compararUrgencia, normalizarBusqueda, resumirPartida, textoBusqueda, type ResumenPartida } from '../lib/partidas';
+import {
+  compararPorTee,
+  compararUrgencia,
+  normalizarBusqueda,
+  resumirPartida,
+  textoBusqueda,
+  vistaDesde,
+  type ResumenPartida,
+} from '../lib/partidas';
+import { useRonda } from '../hooks/useRonda';
+import { hhmm } from '../lib/hora';
 import { esSalidas } from '../lib/jornadas';
 import { FormularioPartida } from '../componentes/FormularioPartida';
 
@@ -25,14 +35,16 @@ const CUMPLE: Record<Filtro, (r: ResumenPartida) => boolean> = {
 
 const ORDEN_FASE = { en_juego: 0, pendiente: 1, terminada: 2 } as const;
 
-type Orden = 'salida' | 'urgentes';
+type Orden = 'tee' | 'salida' | 'urgentes';
 const CLAVE_ORDEN = 'ritmo-golf:orden-marshal';
 
+/** Por defecto, por tee (1, 18, 17 …), que es como se recorre el campo en un torneo. */
 function leerOrden(): Orden {
   try {
-    return localStorage.getItem(CLAVE_ORDEN) === 'urgentes' ? 'urgentes' : 'salida';
+    const guardado = localStorage.getItem(CLAVE_ORDEN);
+    return guardado === 'urgentes' || guardado === 'salida' ? guardado : 'tee';
   } catch {
-    return 'salida';
+    return 'tee';
   }
 }
 
@@ -41,6 +53,7 @@ export function MarshalLista() {
   const ahora = useAhora(15_000);
   const [creando, setCreando] = useState(false);
   const [orden, setOrden] = useState<Orden>(leerOrden);
+  const ronda = useRonda(torneo?.id);
   const [busqueda, setBusqueda] = useState('');
   const [verTerminadas, setVerTerminadas] = useState(false);
   const [filtro, setFiltro] = useState<Filtro>('activas');
@@ -52,11 +65,16 @@ export function MarshalLista() {
   const visibles = resumenes
     .filter(({ r }) => (verTerminadas && filtro === 'activas') || CUMPLE[filtro](r))
     .filter(({ p }) => !texto || textoBusqueda(p).includes(texto))
+    // Por tee: 1, 18, 17 … 2 (las terminadas, al final).
     // Por hora: primero las que están jugando, luego las que van a salir y al final las terminadas.
     // Urgentes: primero las rojas y después las que llevan más tiempo sin ver.
-    .sort((a, b) =>
-      orden === 'urgentes' ? compararUrgencia(a.p, b.p, ahora) : ORDEN_FASE[a.r.fase] - ORDEN_FASE[b.r.fase],
-    );
+    .sort((a, b) => {
+      if (orden === 'urgentes') return compararUrgencia(a.p, b.p, ahora);
+      if (orden === 'tee') return Number(a.r.fase === 'terminada') - Number(b.r.fase === 'terminada') || compararPorTee(a.p, b.p);
+      return ORDEN_FASE[a.r.fase] - ORDEN_FASE[b.r.fase];
+    });
+  const enJuego = resumenes.filter(({ r }) => r.fase === 'en_juego');
+  const vistasEnRonda = ronda.inicio ? enJuego.filter(({ p }) => vistaDesde(p, ronda.inicio!)).length : 0;
   const cambiarOrden = (nuevo: Orden) => {
     setOrden(nuevo);
     try {
@@ -92,6 +110,38 @@ export function MarshalLista() {
         </div>
       ) : (
         <main className="mx-auto max-w-[1800px] space-y-3 px-3 py-3 sm:px-4">
+          {/* Ronda de revisión: se empieza una vez para todas las partidas */}
+          {ronda.inicio ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-sky-600 bg-sky-50 px-4 py-3 text-sky-950">
+              <div className="min-w-0 flex-1">
+                <p className="font-bold">
+                  Ronda de revisión desde las <span className="cifras">{hhmm(ronda.inicio)}</span>
+                </p>
+                <p className="text-sm">
+                  Vistas {vistasEnRonda} de {enJuego.length} partidas en juego. Entra en cada una y toca dónde están.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('¿Terminar la ronda de revisión?')) ronda.terminar();
+                }}
+                className="min-h-11 rounded-xl border border-sky-700 bg-white px-4 font-semibold text-sky-900 hover:bg-sky-100"
+              >
+                Terminar ronda
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={ronda.empezar}
+              className="flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-5 text-lg font-bold text-white shadow hover:bg-sky-700"
+            >
+              ▶ Empezar ronda de revisión
+              <span className="text-sm font-medium text-sky-100">(una vez para todas las partidas)</span>
+            </button>
+          )}
+
           {/* Indicadores (también filtran la lista) */}
           <div className="grid grid-cols-4 gap-2">
             <Indicador titulo="En juego" valor={cuenta('activas')} activo={filtro === 'activas'} onClick={() => setFiltro('activas')} />
@@ -134,11 +184,12 @@ export function MarshalLista() {
                 placeholder="Buscar jugador, hora o nº de buggy/carro"
                 className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base"
               />
-              <div role="radiogroup" aria-label="Orden de la lista" className="grid grid-cols-2 rounded-xl bg-slate-200 p-1 text-sm font-semibold">
+              <div role="radiogroup" aria-label="Orden de la lista" className="grid grid-cols-[1.4fr_1fr_1fr] rounded-xl bg-slate-200 p-1 text-sm font-semibold">
                 {(
                   [
-                    ['salida', 'Por hora de salida'],
-                    ['urgentes', 'Más urgentes primero'],
+                    ['tee', 'Por tee (1, 18, 17…)'],
+                    ['salida', 'Por hora'],
+                    ['urgentes', 'Urgentes'],
                   ] as const
                 ).map(([valor, texto]) => (
                   <button
@@ -156,6 +207,7 @@ export function MarshalLista() {
               {orden === 'urgentes' && (
                 <p className="text-xs text-slate-500">Primero las rojas; después, las que llevan más tiempo sin ver.</p>
               )}
+              {orden === 'tee' && <p className="text-xs text-slate-500">Tee 1, luego 18, 17, 16… hasta el 2.</p>}
               {cargando && <p className="text-center text-slate-500">Cargando partidas…</p>}
               {!cargando && visibles.length === 0 && (
                 <p className="rounded-xl bg-white p-6 text-center text-slate-500">No hay partidas que mostrar.</p>
@@ -163,7 +215,13 @@ export function MarshalLista() {
               <ul className="space-y-2">
                 {visibles.map(({ p }) => (
                   <li key={p.id}>
-                    <TarjetaPartida partida={p} ahora={ahora} to={`/marshal/${p.id}`} activa={p.id === seleccionada} />
+                    <TarjetaPartida
+                      partida={p}
+                      ahora={ahora}
+                      to={`/marshal/${p.id}`}
+                      activa={p.id === seleccionada}
+                      vistaEnRonda={ronda.inicio ? vistaDesde(p, ronda.inicio) : undefined}
+                    />
                   </li>
                 ))}
               </ul>

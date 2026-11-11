@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { useDatos } from '../datos/DatosProvider';
+import { useRonda } from '../hooks/useRonda';
 import type { Avistamiento, Partida } from '../datos/tipos';
 import { useAhora } from '../hooks/useAhora';
 import { hhmm, hhmmss, minutosEntre } from '../lib/hora';
@@ -43,20 +44,20 @@ function recordarHoyo(hoyo: number) {
 }
 
 export function RegistroAvistamiento({ partida }: { partida: Partida }) {
-  const { ejecutar, usuario } = useDatos();
+  const { ejecutar, usuario, torneo } = useDatos();
+  const ronda = useRonda(torneo?.id);
   const ahora = useAhora(5_000);
   const resumen = resumirPartida(partida, ahora);
   const hoyoEsperado = resumen.esperada.fase === 'antes_de_salir' ? null : resumen.esperada.hoyo;
   const [hoyo, setHoyo] = useState<number>(() => leerUltimoHoyo() ?? hoyoEsperado ?? partida.hoyo_salida);
   const [resultado, setResultado] = useState<{ avistamiento: Avistamiento; ventana: Ventana } | null>(null);
 
-  const revisandoDesde = partida.revision_iniciada_en;
-
   const elegirHoyo = (h: number) => {
     setHoyo(h);
     recordarHoyo(h);
   };
 
+  // Un toque en la posición basta: se apunta la hora de ese momento.
   const marcar = (posicion: Posicion) => {
     const visto = new Date();
     const r = evaluarRitmo(salidaDe(partida), hoyo, posicion, visto);
@@ -65,7 +66,7 @@ export function RegistroAvistamiento({ partida }: { partida: Partida }) {
       partida_id: partida.id,
       hoyo,
       posicion,
-      revision_iniciada_en: revisandoDesde,
+      revision_iniciada_en: ronda.inicio,
       visto_en: visto.toISOString(),
       retraso_min: r.retrasoMin,
       estado: r.estado,
@@ -77,51 +78,32 @@ export function RegistroAvistamiento({ partida }: { partida: Partida }) {
     void ejecutar({ tipo: 'registrar_avistamiento', avistamiento });
   };
 
-  const deshacer = () => {
+  const borrar = () => {
     if (!resultado) return;
     void ejecutar({ tipo: 'eliminar_avistamiento', partidaId: partida.id, avistamientoId: resultado.avistamiento.id });
-    if (resultado.avistamiento.revision_iniciada_en) {
-      void ejecutar({ tipo: 'iniciar_revision', partidaId: partida.id, cuando: resultado.avistamiento.revision_iniciada_en });
-    }
     setResultado(null);
   };
 
   return (
     <div className="space-y-5">
-      {/* 1. Revisión */}
-      <div className="flex flex-wrap items-center gap-3">
-        {revisandoDesde ? (
-          <>
-            <div className="flex-1 rounded-xl bg-sky-50 px-4 py-3 text-sky-950">
-              <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Revisando desde</p>
-              <p className="cifras text-2xl font-bold">
-                {hhmmss(revisandoDesde)}{' '}
-                <span className="text-base font-medium text-sky-800">
-                  ({Math.max(0, Math.floor(minutosEntre(revisandoDesde, ahora)))} min)
-                </span>
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void ejecutar({ tipo: 'iniciar_revision', partidaId: partida.id, cuando: null })}
-              className="min-h-12 rounded-xl border border-slate-300 px-4 font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              Cancelar revisión
-            </button>
-          </>
-        ) : (
+      {/* 1. Ronda de revisión (se empieza una vez para todas las partidas) */}
+      {ronda.inicio ? (
+        <p className="rounded-xl bg-sky-50 px-4 py-2 text-sm text-sky-950">
+          Ronda de revisión desde las <strong className="cifras">{hhmm(ronda.inicio)}</strong> (
+          {Math.max(0, Math.floor(minutosEntre(ronda.inicio, ahora)))} min). Toca la posición y se apunta la hora.
+        </p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-50 px-4 py-2 text-sm text-slate-700">
+          <span className="flex-1">Toca la posición y se apunta la hora a la que les ves.</span>
           <button
             type="button"
-            onClick={() => {
-              setResultado(null);
-              void ejecutar({ tipo: 'iniciar_revision', partidaId: partida.id, cuando: new Date().toISOString() });
-            }}
-            className="min-h-14 w-full rounded-xl bg-sky-600 px-5 text-lg font-bold text-white shadow hover:bg-sky-700 sm:w-auto"
+            onClick={ronda.empezar}
+            className="min-h-10 rounded-lg bg-sky-600 px-3 font-bold text-white hover:bg-sky-700"
           >
-            ▶ Empezar revisión
+            ▶ Empezar ronda de revisión
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 2. Hoyo */}
       <div>
@@ -175,7 +157,7 @@ export function RegistroAvistamiento({ partida }: { partida: Partida }) {
         </div>
       </div>
 
-      {resultado && <ResultadoAvistamiento {...resultado} onDeshacer={deshacer} onCerrar={() => setResultado(null)} />}
+      {resultado && <ResultadoAvistamiento {...resultado} onDeshacer={borrar} onCerrar={() => setResultado(null)} />}
     </div>
   );
 }
@@ -210,8 +192,12 @@ function ResultadoAvistamiento({
         </div>
       </div>
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={onDeshacer} className="min-h-11 rounded-lg bg-white/80 px-4 font-semibold shadow-sm hover:bg-white">
-          Deshacer
+        <button
+          type="button"
+          onClick={onDeshacer}
+          className="min-h-11 rounded-lg border-2 border-red-600 bg-white px-4 font-bold text-red-700 shadow-sm hover:bg-red-50"
+        >
+          🗑 Borrar esta revisión
         </button>
         <button type="button" onClick={onCerrar} className="min-h-11 rounded-lg px-4 font-semibold hover:bg-white/50">
           Cerrar

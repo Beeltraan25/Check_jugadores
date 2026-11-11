@@ -290,7 +290,7 @@ function FichaOficina({ partida, ahora, onCerrar }: { partida: Partida; ahora: D
       </div>
 
       <Seccion titulo="Historial">
-        <HistorialAvistamientos partida={partida} />
+        <HistorialAvistamientos partida={partida} editable />
       </Seccion>
       <Seccion titulo="Alquileres">
         <EditorAlquileres partida={partida} />

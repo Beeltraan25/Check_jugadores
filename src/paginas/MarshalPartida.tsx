@@ -5,16 +5,18 @@ import { HistorialAvistamientos } from '../componentes/Historial';
 import { EditorObservaciones } from '../componentes/Observaciones';
 import { RegistroAvistamiento } from '../componentes/RegistroAvistamiento';
 import { EditorSalida } from '../componentes/EditorSalida';
+import { useRonda } from '../hooks/useRonda';
 import { AvisoFechaTorneo } from '../componentes/SinTorneo';
 import { useDatos, usePartida } from '../datos/DatosProvider';
 import { useAhora } from '../hooks/useAhora';
-import { etiquetaPartida, nombresJugadores, resumirPartida, tituloPartida } from '../lib/partidas';
+import { compararPorTee, etiquetaPartida, nombresJugadores, resumirPartida, tituloPartida, vistaDesde } from '../lib/partidas';
 
 /** Ficha de una partida para el Marshal: registrar dónde está, alquileres y observaciones. */
 export function MarshalPartida() {
   const { id } = useParams();
   const partida = usePartida(id);
-  const { cargando, ejecutar, torneo } = useDatos();
+  const { cargando, ejecutar, torneo, partidas } = useDatos();
+  const ronda = useRonda(torneo?.id);
   const ahora = useAhora(15_000);
 
   if (!partida) {
@@ -32,6 +34,14 @@ export function MarshalPartida() {
   }
 
   const resumen = resumirPartida(partida, ahora);
+  // En una ronda de revisión: la siguiente partida en juego (por tee 1, 18, 17…) que aún no se ha
+  // visto; si ya no queda ninguna detrás de esta, se vuelve a empezar por el principio.
+  const pendientes = ronda.inicio
+    ? partidas
+        .filter((p) => p.id !== partida.id && resumirPartida(p, ahora).fase === 'en_juego' && !vistaDesde(p, ronda.inicio!))
+        .sort(compararPorTee)
+    : [];
+  const siguiente = pendientes.find((p) => compararPorTee(p, partida) > 0) ?? pendientes[0];
 
   return (
     <div className="min-h-dvh pb-10">
@@ -69,6 +79,15 @@ export function MarshalPartida() {
           </Seccion>
         )}
 
+        {ronda.inicio && (
+          <Link
+            to={siguiente ? `/marshal/${siguiente.id}` : '/marshal'}
+            className="flex min-h-14 items-center justify-center rounded-xl bg-sky-600 px-4 text-lg font-bold text-white shadow hover:bg-sky-700"
+          >
+            {siguiente ? `Siguiente partida sin ver: ${etiquetaPartida(siguiente)} ›` : 'Ronda completa: volver a la lista ›'}
+          </Link>
+        )}
+
         <Seccion titulo="Alquileres">
           <EditorAlquileres partida={partida} />
         </Seccion>
@@ -78,7 +97,7 @@ export function MarshalPartida() {
         </Seccion>
 
         <Seccion titulo="Historial de hoy">
-          <HistorialAvistamientos partida={partida} />
+          <HistorialAvistamientos partida={partida} editable />
         </Seccion>
 
         {resumen.fase !== 'terminada' && (

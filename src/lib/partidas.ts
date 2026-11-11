@@ -128,3 +128,17 @@ export function compararUrgencia(a: Partida, b: Partida, ahora: Date): number {
   if (grupo(ra) === 1) return minutosSinVer(b, ahora) - minutosSinVer(a, ahora);
   return a.hora_salida.localeCompare(b.hora_salida);
 }
+
+/**
+ * Orden de los tees para recorrer el campo: primero el 1 y después 18, 17, 16 … hasta el 2.
+ * (Con 18 hoyos: tee 1 → 0, tee 18 → 1, tee 17 → 2 … tee 2 → 17.)
+ */
+export const posicionDeTee = (tee: number) => (tee === 1 ? 0 : 19 - tee);
+
+/** Orden "por tee" del Marshal: tee 1, 18, 17 … 2; dentro del mismo tee, por hora de salida. */
+export function compararPorTee(a: Partida, b: Partida): number {
+  return posicionDeTee(a.hoyo_salida) - posicionDeTee(b.hoyo_salida) || a.hora_salida.localeCompare(b.hora_salida);
+}
+
+/** ¿Se ha visto a la partida desde `desde` (inicio de la ronda de revisión)? */
+export const vistaDesde = (p: Partida, desde: string) => p.avistamientos.some((a) => a.visto_en >= desde);

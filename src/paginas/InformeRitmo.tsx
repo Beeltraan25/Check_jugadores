@@ -12,7 +12,7 @@ import { EditorOrganizador } from '../componentes/Organizador';
 import { RetrasoPorHoyo } from '../componentes/RetrasoPorHoyo';
 import { useDatos, usePartidasDeTorneo } from '../datos/DatosProvider';
 import { csvRitmoPartidas, csvRitmoVistas, descargarCsv, nombreArchivo } from '../lib/exportar';
-import { hhmm, minutosEntre } from '../lib/hora';
+import { hhmm } from '../lib/hora';
 import {
   OBJETIVO_MIN_HOYO,
   conclusionTorneo,
@@ -270,10 +270,7 @@ function DetallePartida({ p }: { p: RitmoPartida }) {
               <span className="min-w-0 flex-1">
                 Hoyo {v.hoyo} · {NOMBRE_POSICION[v.posicion]}
                 {v.revision_iniciada_en && (
-                  <span className="text-xs text-slate-500">
-                    {' '}
-                    · revisión {Math.max(0, Math.round(minutosEntre(v.revision_iniciada_en, new Date(v.visto_en))))} min
-                  </span>
+                  <span className="text-xs text-slate-500"> · ronda desde las {hhmm(v.revision_iniciada_en)}</span>
                 )}
               </span>
               <EstadoBadge estado={v.estado} retraso={v.retraso_min} />

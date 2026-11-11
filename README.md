@@ -70,6 +70,15 @@ Para medir también el ritmo del juego de cada día:
 
 No hay que cambiar nada en la base de datos: la jornada de salidas se guarda como un torneo con un identificador fijo para cada fecha (ver `src/lib/jornadas.ts`).
 
+## Ronda de revisión del Marshal
+
+1. En la pantalla del Marshal, pulsa **Empezar ronda de revisión** (una sola vez para todas las partidas).
+2. Entra en una partida, elige el hoyo y **toca la posición**: se apunta la hora en ese momento. No hay que pulsar nada más.
+3. Pulsa **Siguiente partida sin ver** para saltar a la siguiente (por orden de tee). En la lista, cada partida pone *✓ Vista en esta ronda* o *Falta por ver*, y arriba sale cuántas llevas.
+4. Si te equivocas: **🗑 Borrar esta revisión** justo después de apuntarla, o la papelera de cualquier revisión en el historial de la partida.
+
+La lista del Marshal se ordena por defecto **por tee: 1, 18, 17, 16… hasta el 2** (también se puede por hora o por urgencia).
+
 ## Otras ayudas del día a día
 
 - **Aviso de partida en rojo (oficina):** cuando una vista nueva pone a una partida con 15 min o más de retraso, sale un aviso en pantalla con el botón *Ver partida*. Con el botón 🔔 de la cabecera, además suena.
