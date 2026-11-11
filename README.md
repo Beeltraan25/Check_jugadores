@@ -41,6 +41,8 @@ Para probarlo en el móvil dentro de tu red WiFi: `npm run dev -- --host` y abre
 
 6. Reinicia `npm run dev`. Ahora la app pide iniciar sesión y todo se sincroniza en tiempo real entre todos los dispositivos.
 
+**La sesión se cierra al cerrar la web** (o la app instalada): al volver a abrirla hay que poner email y contraseña. Recargar la página no la cierra. Lo que el Marshal haya apuntado sin cobertura no se pierde: se envía al volver a entrar.
+
 > La clave pública puede ir en la web sin problema: la seguridad la ponen las políticas RLS del `schema.sql` (solo el personal con sesión iniciada puede leer y escribir). **Nunca** pongas la clave `service_role` en el frontend.
 
 ## Torneos: importar el PDF de salidas
@@ -140,7 +142,7 @@ Detalles pensados para el móvil:
 
 ## Sin cobertura en el campo
 
-- **Abrir la app sin red:** una vez abierta con conexión, la app queda guardada en el dispositivo (service worker, `public/sw.js`) y vuelve a abrir sin cobertura. Con Supabase, además, muestra la última copia de las partidas del torneo; la copia se borra al cerrar sesión.
+- **Abrir la app sin red:** (solo con la sesión aún abierta; al cerrar la web hay que volver a entrar con conexión): una vez abierta con conexión, la app queda guardada en el dispositivo (service worker, `public/sw.js`) y vuelve a abrir sin cobertura. Con Supabase, además, muestra la última copia de las partidas del torneo; la copia se borra al cerrar sesión.
 - **Apuntar sin red:** cada cambio del Marshal se guarda primero en el dispositivo y se envía en cuanto hay conexión. La cabecera muestra "Sin conexión" y "N sin enviar". La hora del avistamiento es la del momento del toque, aunque llegue más tarde a la oficina.
 
 ## Publicarlo

@@ -16,8 +16,29 @@ import { nuevoId } from '../lib/ids';
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const clave = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
+/**
+ * La sesión se guarda en sessionStorage, que el navegador borra al cerrar la web (o la app
+ * instalada): al volver a abrirla hay que iniciar sesión otra vez. Mientras está abierta,
+ * recargar la página no cierra la sesión.
+ */
+function almacenSesion(): Storage | undefined {
+  try {
+    // Sesiones guardadas por versiones anteriores (que no caducaban al cerrar): se borran.
+    Object.keys(localStorage)
+      .filter((k) => /^sb-.*-auth-token/.test(k))
+      .forEach((k) => localStorage.removeItem(k));
+    localStorage.removeItem('ritmo-golf:copia-datos'); // la copia ahora va en sessionStorage
+    return window.sessionStorage;
+  } catch {
+    return undefined; // almacenamiento bloqueado: la sesión dura lo que dure la página
+  }
+}
+
 /** Cliente de Supabase, o null si no hay credenciales (entonces la app usa el modo demo). */
-export const supabase = url && clave ? createClient(url, clave) : null;
+export const supabase =
+  url && clave
+    ? createClient(url, clave, { auth: { storage: almacenSesion(), persistSession: true, autoRefreshToken: true } })
+    : null;
 
 const TABLAS = ['torneos', 'partidas', 'jugadores', 'alquileres', 'avistamientos'] as const;
 const CLAVE_COLA = 'ritmo-golf:cola';
@@ -170,6 +191,8 @@ interface EntradaCola {
 }
 
 // --- Copia de los últimos datos, para abrir la app sin cobertura ----------------------
+// Va en sessionStorage, como la sesión: lleva nombres de jugadores y se borra al cerrar la web.
+// Sirve para recargar la página sin cobertura mientras la sesión sigue abierta.
 
 const CLAVE_COPIA = 'ritmo-golf:copia-datos';
 const TORNEOS_EN_COPIA = 3;
@@ -181,7 +204,7 @@ interface CopiaDatos {
 
 function leerCopia(): CopiaDatos {
   try {
-    return { partidas: {}, ...(JSON.parse(localStorage.getItem(CLAVE_COPIA) ?? '{}') as Partial<CopiaDatos>) };
+    return { partidas: {}, ...(JSON.parse(sessionStorage.getItem(CLAVE_COPIA) ?? '{}') as Partial<CopiaDatos>) };
   } catch {
     return { partidas: {} };
   }
@@ -189,7 +212,7 @@ function leerCopia(): CopiaDatos {
 
 function guardarCopia(cambio: (copia: CopiaDatos) => CopiaDatos) {
   try {
-    localStorage.setItem(CLAVE_COPIA, JSON.stringify(cambio(leerCopia())));
+    sessionStorage.setItem(CLAVE_COPIA, JSON.stringify(cambio(leerCopia())));
   } catch {
     /* sin espacio o almacenamiento bloqueado: no pasa nada, solo no habrá copia */
   }
