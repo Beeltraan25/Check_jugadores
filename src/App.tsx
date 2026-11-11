@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router';
 import { DatosProvider } from './datos/DatosProvider';
 import { useSesion } from './datos/sesion';
 import { AvisoFlotante } from './componentes/AvisoFlotante';
+import { AvisoVersion } from './componentes/AvisoVersion';
 import { Inicio } from './paginas/Inicio';
 import { Login } from './paginas/Login';
 import { MarshalLista } from './paginas/MarshalLista';
@@ -38,6 +39,7 @@ export function App() {
         <Route path="*" element={<Inicio />} />
       </Routes>
       <AvisoFlotante />
+      <AvisoVersion />
     </DatosProvider>
   );
 }

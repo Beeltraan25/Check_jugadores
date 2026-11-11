@@ -137,6 +137,8 @@ async function enviar(op: Operacion): Promise<void> {
       return comprobar(db.from('torneos').delete().eq('id', op.torneoId));
     case 'crear_partida':
       return insertarPartidas([op.partida]);
+    case 'actualizar_partida':
+      return comprobar(db.from('partidas').update(op.cambios).eq('id', op.partidaId));
     case 'eliminar_partida':
       return comprobar(db.from('partidas').delete().eq('id', op.partidaId));
     case 'iniciar_revision':

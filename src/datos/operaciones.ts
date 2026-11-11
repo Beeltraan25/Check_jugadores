@@ -8,7 +8,7 @@
  * Las operaciones son idempotentes (aplicarlas dos veces da lo mismo), por eso se pueden
  * reintentar sin miedo a duplicar datos.
  */
-import { clasificarRetraso } from '../lib/ritmo';
+import { evaluarRitmo } from '../lib/ritmo';
 import type { Alquiler, Avistamiento, Partida, Torneo } from './tipos';
 
 /** Lo que la app tiene cargado: la lista de torneos y las partidas del torneo en uso. */
@@ -19,11 +19,15 @@ export interface Estado {
 
 export type CambiosTorneo = Partial<Pick<Torneo, 'nombre' | 'organizador' | 'fecha' | 'notas' | 'cerrado_en'>>;
 
+/** Lo que se puede corregir de una partida ya creada: su hora de salida y su tee. */
+export type CambiosPartida = Partial<Pick<Partida, 'hora_salida' | 'hoyo_salida'>>;
+
 export type Operacion =
   | { tipo: 'crear_torneo'; torneo: Torneo; partidas: Partida[] }
   | { tipo: 'actualizar_torneo'; torneoId: string; cambios: CambiosTorneo }
   | { tipo: 'eliminar_torneo'; torneoId: string }
   | { tipo: 'crear_partida'; partida: Partida }
+  | { tipo: 'actualizar_partida'; partidaId: string; cambios: CambiosPartida }
   | { tipo: 'eliminar_partida'; partidaId: string }
   | { tipo: 'iniciar_revision'; partidaId: string; cuando: string | null }
   | { tipo: 'registrar_avistamiento'; avistamiento: Avistamiento }
@@ -38,18 +42,30 @@ const porHoraVisto = (a: Avistamiento, b: Avistamiento) => a.visto_en.localeComp
 const porFechaDesc = (a: Torneo, b: Torneo) => b.fecha.localeCompare(a.fecha) || b.creado_en.localeCompare(a.creado_en);
 
 /**
- * Ordena partidas por hora de salida, jugadores por orden y avistamientos por hora.
- * El color (estado) de cada avistamiento se recalcula con los límites actuales, así un
- * cambio de límites (p. ej. verde hasta 5 min) se aplica también a lo ya registrado.
+ * Recalcula el retraso y el color de cada vista de una partida a partir de su hora de salida,
+ * su tee y la hora a la que se la vio. Así, si se corrige la hora de salida o el tee, o se
+ * cambian los límites de color, todo lo ya registrado queda coherente.
  */
-export function normalizarPartidas(partidas: Partida[]): Partida[] {
-  return [...partidas].sort(porHoraSalida).map((p) => ({
+export function recalcularRitmo(p: Partida): Partida {
+  const salida = { horaSalida: new Date(p.hora_salida), hoyoSalida: p.hoyo_salida };
+  return {
     ...p,
-    jugadores: [...p.jugadores].sort((a, b) => a.orden - b.orden),
-    avistamientos: [...p.avistamientos]
-      .sort(porHoraVisto)
-      .map((a) => ({ ...a, estado: clasificarRetraso(a.retraso_min) })),
-  }));
+    avistamientos: p.avistamientos.map((a) => {
+      const r = evaluarRitmo(salida, a.hoyo, a.posicion, new Date(a.visto_en));
+      return { ...a, retraso_min: r.retrasoMin, estado: r.estado };
+    }),
+  };
+}
+
+/** Ordena partidas por hora de salida, jugadores por orden y avistamientos por hora, y recalcula su ritmo. */
+export function normalizarPartidas(partidas: Partida[]): Partida[] {
+  return [...partidas].sort(porHoraSalida).map((p) =>
+    recalcularRitmo({
+      ...p,
+      jugadores: [...p.jugadores].sort((a, b) => a.orden - b.orden),
+      avistamientos: [...p.avistamientos].sort(porHoraVisto),
+    }),
+  );
 }
 
 export function ordenarTorneos(torneos: Torneo[]): Torneo[] {
@@ -75,6 +91,9 @@ function aplicarAPartidas(partidas: Partida[], op: Operacion): Partida[] {
     case 'crear_partida':
       if (partidas.some((p) => p.id === op.partida.id)) return partidas;
       return [...partidas, op.partida].sort(porHoraSalida);
+
+    case 'actualizar_partida':
+      return editar(op.partidaId, (p) => recalcularRitmo({ ...p, ...op.cambios })).sort(porHoraSalida);
 
     case 'eliminar_partida':
       return partidas.filter((p) => p.id !== op.partidaId);

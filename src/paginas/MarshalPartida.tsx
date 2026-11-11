@@ -4,6 +4,7 @@ import { Cabecera, EstadoBadge, Seccion } from '../componentes/basicos';
 import { HistorialAvistamientos } from '../componentes/Historial';
 import { EditorObservaciones } from '../componentes/Observaciones';
 import { RegistroAvistamiento } from '../componentes/RegistroAvistamiento';
+import { EditorSalida } from '../componentes/EditorSalida';
 import { AvisoFechaTorneo } from '../componentes/SinTorneo';
 import { useDatos, usePartida } from '../datos/DatosProvider';
 import { useAhora } from '../hooks/useAhora';
@@ -50,6 +51,7 @@ export function MarshalPartida() {
           <EstadoBadge estado={resumen.estado} retraso={resumen.ultimo?.retraso_min} grande />
           <span>{nombresJugadores(partida)}</span>
         </div>
+        <EditorSalida partida={partida} />
 
         {resumen.fase === 'terminada' ? (
           <Seccion titulo="Partida terminada">

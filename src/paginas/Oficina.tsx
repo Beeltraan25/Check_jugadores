@@ -12,6 +12,9 @@ import { EditorObservaciones } from '../componentes/Observaciones';
 import { RegistroAvistamiento } from '../componentes/RegistroAvistamiento';
 import { TarjetaPartida } from '../componentes/TarjetaPartida';
 import { Indicador } from '../componentes/Indicador';
+import { AvisosDeRetraso } from '../componentes/AvisosDeRetraso';
+import { EditorSalida } from '../componentes/EditorSalida';
+import { esSalidas } from '../lib/jornadas';
 import { AvisoFechaTorneo, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
 import { useDatos } from '../datos/DatosProvider';
 import type { Partida } from '../datos/tipos';
@@ -96,14 +99,17 @@ export function Oficina() {
         volverA="/"
         titulo={<TituloTorneo seccion="Caddy Master" nombre={torneo?.nombre} />}
         acciones={
+          <>
+            <AvisosDeRetraso partidas={partidas} jornadaId={torneo?.id ?? null} cargando={cargando} onVer={setSeleccionada} />
           <button
             type="button"
             disabled={!torneo}
             onClick={() => setCreando(true)}
             className="min-h-10 rounded-lg bg-yellow-300 px-4 text-sm font-bold text-campo-900 shadow hover:bg-yellow-200 disabled:opacity-40"
           >
-            + Nueva partida
+            + {torneo && esSalidas(torneo) ? 'Nueva salida' : 'Nueva partida'}
           </button>
+          </>
         }
       />
 
@@ -277,6 +283,9 @@ function FichaOficina({ partida, ahora, onCerrar }: { partida: Partida; ahora: D
           <button type="button" onClick={eliminar} className="min-h-10 rounded-lg px-3 text-sm font-semibold text-red-700 hover:bg-red-50">
             Eliminar
           </button>
+        </div>
+        <div className="mt-2">
+          <EditorSalida partida={partida} />
         </div>
       </div>
 

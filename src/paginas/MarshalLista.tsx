@@ -10,7 +10,9 @@ import { TarjetaPartida } from '../componentes/TarjetaPartida';
 import { AvisoFechaTorneo, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
 import { useDatos } from '../datos/DatosProvider';
 import { useAhora } from '../hooks/useAhora';
-import { normalizarBusqueda, resumirPartida, textoBusqueda, type ResumenPartida } from '../lib/partidas';
+import { compararUrgencia, normalizarBusqueda, resumirPartida, textoBusqueda, type ResumenPartida } from '../lib/partidas';
+import { esSalidas } from '../lib/jornadas';
+import { FormularioPartida } from '../componentes/FormularioPartida';
 
 type Filtro = 'activas' | 'en_tiempo' | 'aviso' | 'retrasado';
 
@@ -23,9 +25,22 @@ const CUMPLE: Record<Filtro, (r: ResumenPartida) => boolean> = {
 
 const ORDEN_FASE = { en_juego: 0, pendiente: 1, terminada: 2 } as const;
 
+type Orden = 'salida' | 'urgentes';
+const CLAVE_ORDEN = 'ritmo-golf:orden-marshal';
+
+function leerOrden(): Orden {
+  try {
+    return localStorage.getItem(CLAVE_ORDEN) === 'urgentes' ? 'urgentes' : 'salida';
+  } catch {
+    return 'salida';
+  }
+}
+
 export function MarshalLista() {
   const { partidas, cargando, torneo } = useDatos();
   const ahora = useAhora(15_000);
+  const [creando, setCreando] = useState(false);
+  const [orden, setOrden] = useState<Orden>(leerOrden);
   const [busqueda, setBusqueda] = useState('');
   const [verTerminadas, setVerTerminadas] = useState(false);
   const [filtro, setFiltro] = useState<Filtro>('activas');
@@ -37,14 +52,39 @@ export function MarshalLista() {
   const visibles = resumenes
     .filter(({ r }) => (verTerminadas && filtro === 'activas') || CUMPLE[filtro](r))
     .filter(({ p }) => !texto || textoBusqueda(p).includes(texto))
-    // Primero las que están jugando, luego las que van a salir y al final las terminadas.
-    .sort((a, b) => ORDEN_FASE[a.r.fase] - ORDEN_FASE[b.r.fase]);
+    // Por hora: primero las que están jugando, luego las que van a salir y al final las terminadas.
+    // Urgentes: primero las rojas y después las que llevan más tiempo sin ver.
+    .sort((a, b) =>
+      orden === 'urgentes' ? compararUrgencia(a.p, b.p, ahora) : ORDEN_FASE[a.r.fase] - ORDEN_FASE[b.r.fase],
+    );
+  const cambiarOrden = (nuevo: Orden) => {
+    setOrden(nuevo);
+    try {
+      localStorage.setItem(CLAVE_ORDEN, nuevo);
+    } catch {
+      /* nada */
+    }
+  };
   const partidaSel = partidas.find((p) => p.id === seleccionada) ?? null;
   const elegirFiltro = (f: Filtro) => setFiltro((actual) => (actual === f ? 'activas' : f));
 
   return (
     <div className="min-h-dvh">
-      <Cabecera titulo={<TituloTorneo seccion="Marshal" nombre={torneo?.nombre} />} volverA="/" />
+      <Cabecera
+        titulo={<TituloTorneo seccion="Marshal" nombre={torneo?.nombre} />}
+        volverA="/"
+        acciones={
+          torneo && (
+            <button
+              type="button"
+              onClick={() => setCreando(true)}
+              className="min-h-10 rounded-lg bg-yellow-300 px-3 text-sm font-bold text-campo-900 shadow hover:bg-yellow-200"
+            >
+              + {esSalidas(torneo) ? 'Salida' : 'Partida'}
+            </button>
+          )
+        }
+      />
       <AvisoFechaTorneo torneo={torneo} />
       {!torneo && !cargando ? (
         <div className="px-4 py-10">
@@ -94,6 +134,28 @@ export function MarshalLista() {
                 placeholder="Buscar jugador, hora o nº de buggy/carro"
                 className="h-12 w-full rounded-xl border border-slate-300 bg-white px-4 text-base"
               />
+              <div role="radiogroup" aria-label="Orden de la lista" className="grid grid-cols-2 rounded-xl bg-slate-200 p-1 text-sm font-semibold">
+                {(
+                  [
+                    ['salida', 'Por hora de salida'],
+                    ['urgentes', 'Más urgentes primero'],
+                  ] as const
+                ).map(([valor, texto]) => (
+                  <button
+                    key={valor}
+                    type="button"
+                    role="radio"
+                    aria-checked={orden === valor}
+                    onClick={() => cambiarOrden(valor)}
+                    className={`min-h-10 rounded-lg px-2 ${orden === valor ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}
+                  >
+                    {texto}
+                  </button>
+                ))}
+              </div>
+              {orden === 'urgentes' && (
+                <p className="text-xs text-slate-500">Primero las rojas; después, las que llevan más tiempo sin ver.</p>
+              )}
               {cargando && <p className="text-center text-slate-500">Cargando partidas…</p>}
               {!cargando && visibles.length === 0 && (
                 <p className="rounded-xl bg-white p-6 text-center text-slate-500">No hay partidas que mostrar.</p>
@@ -118,6 +180,7 @@ export function MarshalLista() {
           </div>
         </main>
       )}
+      {creando && torneo && <FormularioPartida torneo={torneo} onCerrar={() => setCreando(false)} />}
     </div>
   );
 }

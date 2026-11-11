@@ -14,6 +14,7 @@ import { nuevoId } from '../lib/ids';
 import { interpretarHorario, type PartidaImportada } from '../lib/importar';
 import { leerLineasPdf } from '../lib/pdf';
 import { CampoOrganizador } from '../componentes/Organizador';
+import { jornadaDeSalidas } from '../lib/jornadas';
 
 const MAX_JUGADORES = 4;
 
@@ -28,6 +29,7 @@ export function ImportarTorneo() {
   const navegar = useNavigate();
   const [nombre, setNombre] = useState('');
   const [organizador, setOrganizador] = useState('');
+  const [tipo, setTipo] = useState<'torneo' | 'salidas'>('torneo');
   const [fecha, setFecha] = useState(fechaLocal());
   const [filas, setFilas] = useState<Fila[] | null>(null);
   const [ignoradas, setIgnoradas] = useState<string[]>([]);
@@ -75,15 +77,19 @@ export function ImportarTorneo() {
 
   const guardar = () => {
     if (!filasValidas.length) return;
-    const torneo: Torneo = {
-      id: nuevoId(),
-      nombre: nombre.trim() || `Torneo ${fecha}`,
-      organizador: organizador.trim(),
-      fecha,
-      notas: '',
-      creado_en: new Date().toISOString(),
-      cerrado_en: null,
-    };
+    // Salidas normales: las partidas se añaden a la jornada de ese día (se crea si no existe).
+    const torneo: Torneo =
+      tipo === 'salidas'
+        ? jornadaDeSalidas(fecha)
+        : {
+            id: nuevoId(),
+            nombre: nombre.trim() || `Torneo ${fecha}`,
+            organizador: organizador.trim(),
+            fecha,
+            notas: '',
+            creado_en: new Date().toISOString(),
+            cerrado_en: null,
+          };
     const partidas: Partida[] = filasValidas.map((f) => {
       const partidaId = nuevoId();
       return {
@@ -105,17 +111,18 @@ export function ImportarTorneo() {
     });
     void ejecutar({ tipo: 'crear_torneo', torneo, partidas });
     elegirTorneo(torneo.id);
-    navegar('/oficina');
+    // Las salidas de otro día no se pueden "usar" (solo las de hoy): se vuelve a la lista.
+    navegar(tipo === 'salidas' && fecha !== fechaLocal() ? '/torneos' : '/oficina');
   };
 
   return (
     <div className="min-h-dvh pb-28">
-      <Cabecera titulo="Importar torneo" volverA="/torneos" />
+      <Cabecera titulo="Importar horario" volverA="/torneos" />
       <main className="mx-auto max-w-5xl space-y-4 px-4 py-5">
         <Seccion titulo="1. Horario de salidas">
           <div className="space-y-4">
             <label className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-2xl border-2 border-dashed border-campo-600 bg-campo-50 p-6 text-center hover:bg-campo-100">
-              <span className="text-lg font-bold text-campo-900">{leyendo ? 'Leyendo el PDF…' : '📄 Elegir el PDF del torneo'}</span>
+              <span className="text-lg font-bold text-campo-900">{leyendo ? 'Leyendo el PDF…' : '📄 Elegir el PDF del horario'}</span>
               <span className="text-sm text-campo-800">Horario de salidas con horas, tee y jugadores</span>
               <input type="file" accept="application/pdf,.pdf" onChange={(e) => void elegirArchivo(e)} className="sr-only" />
             </label>
@@ -145,9 +152,28 @@ export function ImportarTorneo() {
 
         {filas && (
           <>
-            <Seccion titulo="2. Datos del torneo">
-              <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-                <label className="text-sm font-semibold text-slate-700">
+            <Seccion titulo="2. ¿Qué es este horario?">
+              <div role="radiogroup" aria-label="Tipo" className="mb-3 inline-flex rounded-xl bg-slate-100 p-1 text-sm font-semibold">
+                {(
+                  [
+                    ['torneo', 'Un torneo'],
+                    ['salidas', 'Salidas normales de un día'],
+                  ] as const
+                ).map(([valor, texto]) => (
+                  <button
+                    key={valor}
+                    type="button"
+                    role="radio"
+                    aria-checked={tipo === valor}
+                    onClick={() => setTipo(valor)}
+                    className={`min-h-10 rounded-lg px-3 ${tipo === valor ? 'bg-campo-700 text-white shadow' : 'text-slate-600'}`}
+                  >
+                    {texto}
+                  </button>
+                ))}
+              </div>
+              <div className={`grid gap-3 ${tipo === 'torneo' ? 'sm:grid-cols-[1fr_1fr_auto]' : ''}`}>
+                <label className={`text-sm font-semibold text-slate-700 ${tipo === 'torneo' ? '' : 'hidden'}`}>
                   Nombre del torneo
                   <input
                     value={nombre}
@@ -155,7 +181,7 @@ export function ImportarTorneo() {
                     className="mt-1 h-11 w-full rounded-lg border border-slate-300 px-3"
                   />
                 </label>
-                <CampoOrganizador valor={organizador} onCambiar={setOrganizador} />
+                {tipo === 'torneo' && <CampoOrganizador valor={organizador} onCambiar={setOrganizador} />}
                 <label className="text-sm font-semibold text-slate-700">
                   Fecha
                   <input
@@ -251,7 +277,7 @@ export function ImportarTorneo() {
               onClick={guardar}
               className="min-h-12 rounded-xl bg-campo-700 px-6 font-bold text-white shadow hover:bg-campo-800"
             >
-              Guardar torneo y usarlo
+              {tipo === 'salidas' ? 'Guardar las salidas' : 'Guardar torneo y usarlo'}
             </button>
           </div>
         </div>

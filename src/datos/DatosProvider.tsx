@@ -25,6 +25,9 @@ import { aplicarOperacion, type Estado, type Operacion } from './operaciones';
 import type { EstadoConexion, Repositorio } from './repositorio';
 import { crearRepositorioSupabase, supabase } from './supabase';
 import type { Partida, Torneo } from './tipos';
+import { useAhora } from '../hooks/useAhora';
+import { fechaLocal } from '../lib/hora';
+import { idSalidasDelDia, jornadaDeSalidas, resolverJornada } from '../lib/jornadas';
 
 let repositorio: Repositorio | null = null;
 
@@ -55,14 +58,6 @@ function guardarTorneoElegido(id: string | null) {
   }
 }
 
-/** Torneo que se usa si el dispositivo no ha elegido otro: el abierto más reciente. */
-function torneoPorDefecto(torneos: Torneo[]): Torneo | null {
-  return torneos.find((t) => !t.cerrado_en) ?? torneos[0] ?? null;
-}
-
-function resolverTorneo(torneos: Torneo[], elegido: string | null): Torneo | null {
-  return torneos.find((t) => t.id === elegido) ?? torneoPorDefecto(torneos);
-}
 
 interface ContextoDatos {
   /** Todos los torneos, del más reciente al más antiguo. */
@@ -72,6 +67,8 @@ interface ContextoDatos {
   /** Torneo en uso en este dispositivo (null si no hay ninguno). */
   torneo: Torneo | null;
   elegirTorneo: (id: string) => void;
+  /** Pasa a usar las salidas normales de hoy (las crea si aún no existen) y las devuelve. */
+  abrirSalidasDeHoy: () => Torneo;
   /** Partidas del torneo en uso, con los cambios aún no enviados ya aplicados. */
   partidas: Partida[];
   /** Lee las partidas de cualquier torneo (para los informes de torneos pasados). */
@@ -112,6 +109,10 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
   const ultimaPeticion = useRef(0);
   const elegidoRef = useRef(elegido);
   elegidoRef.current = elegido;
+  // Día actual: al pasar la medianoche, las salidas de ayer dejan de ser la jornada en uso.
+  const hoy = fechaLocal(useAhora(60_000));
+  const hoyRef = useRef(hoy);
+  hoyRef.current = hoy;
 
   const cargar = useCallback(async () => {
     const peticion = ++ultimaPeticion.current;
@@ -121,7 +122,7 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
       const torneos = lista.map(({ num_partidas: _n, ...t }) => t);
       // Se decide qué torneo cargar teniendo en cuenta también los creados sin conexión.
       const conLocales = repo.operacionesLocales().reduce(aplicarOperacion, { torneos, partidas: [] }).torneos;
-      const torneo = resolverTorneo(conLocales, elegidoRef.current);
+      const torneo = resolverJornada(conLocales, elegidoRef.current, hoyRef.current);
       const partidas = torneo ? await repo.cargarTorneo(torneo.id) : [];
       if (peticion !== ultimaPeticion.current) return; // llegó una respuesta más nueva
       repo.confirmarHasta(inicio);
@@ -164,7 +165,7 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
     [repo, servidor, version],
   );
 
-  const torneo = resolverTorneo(vista.torneos, elegido);
+  const torneo = resolverJornada(vista.torneos, elegido, hoy);
   const torneoId = torneo?.id ?? null;
 
   // Si cambia el torneo en uso (elegido aquí, creado o borrado), se cargan sus partidas.
@@ -205,6 +206,15 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
     elegirTorneo: (id) => {
       guardarTorneoElegido(id);
       setElegido(id);
+    },
+    abrirSalidasDeHoy: () => {
+      const jornada = vista.torneos.find((t) => t.id === idSalidasDelDia(hoy)) ?? jornadaDeSalidas(hoy);
+      if (!vista.torneos.some((t) => t.id === jornada.id)) {
+        void repo.ejecutar({ tipo: 'crear_torneo', torneo: jornada, partidas: [] });
+      }
+      guardarTorneoElegido(jornada.id);
+      setElegido(jornada.id);
+      return jornada;
     },
     partidas,
     cargarPartidasDe,

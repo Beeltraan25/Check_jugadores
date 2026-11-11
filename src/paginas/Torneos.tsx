@@ -8,10 +8,14 @@ import type { Torneo } from '../datos/tipos';
 import { fechaLocal } from '../lib/hora';
 import { nuevoId } from '../lib/ids';
 import { fechaLarga } from '../lib/textos';
+import { esSalidas, tipoDeJornada } from '../lib/jornadas';
 import { CampoOrganizador } from '../componentes/Organizador';
 
 export function Torneos() {
-  const { torneos, torneo: enUso, elegirTorneo, numPartidas, ejecutar, cargando } = useDatos();
+  const { torneos, torneo: enUso, elegirTorneo, abrirSalidasDeHoy, numPartidas, ejecutar, cargando } = useDatos();
+  const [ver, setVer] = useState<'todo' | 'torneos' | 'salidas'>('todo');
+  const hoy = fechaLocal();
+  const visibles = torneos.filter((t) => ver === 'todo' || (ver === 'salidas') === esSalidas(t));
   const navegar = useNavigate();
   const [creandoVacio, setCreandoVacio] = useState(false);
 
@@ -30,7 +34,7 @@ export function Torneos() {
 
   return (
     <div className="min-h-dvh">
-      <Cabecera titulo="Torneos" volverA="/" />
+      <Cabecera titulo="Torneos y salidas" volverA="/" />
       <main className="mx-auto max-w-4xl space-y-4 px-4 py-5">
         <div className="flex flex-wrap gap-2">
           <Link
@@ -39,6 +43,16 @@ export function Torneos() {
           >
             📄 Importar horario (PDF)
           </Link>
+          <button
+            type="button"
+            onClick={() => {
+              abrirSalidasDeHoy();
+              navegar('/oficina');
+            }}
+            className="min-h-12 rounded-xl border-2 border-sky-700 bg-white px-5 font-bold text-sky-900 hover:bg-sky-50"
+          >
+            Salidas normales de hoy
+          </button>
           <button
             type="button"
             onClick={() => setCreandoVacio((v) => !v)}
@@ -76,16 +90,42 @@ export function Torneos() {
           />
         )}
 
+        <div role="radiogroup" aria-label="Qué mostrar" className="inline-flex rounded-xl bg-slate-200 p-1 text-sm font-semibold">
+          {(
+            [
+              ['todo', 'Todo'],
+              ['torneos', 'Torneos'],
+              ['salidas', 'Salidas normales'],
+            ] as const
+          ).map(([valor, texto]) => (
+            <button
+              key={valor}
+              type="button"
+              role="radio"
+              aria-checked={ver === valor}
+              onClick={() => setVer(valor)}
+              className={`min-h-10 rounded-lg px-3 ${ver === valor ? 'bg-white text-slate-900 shadow' : 'text-slate-600'}`}
+            >
+              {texto}
+            </button>
+          ))}
+        </div>
+
         {cargando && torneos.length === 0 && <p className="text-center text-slate-500">Cargando…</p>}
-        {!cargando && torneos.length === 0 && (
+        {!cargando && visibles.length === 0 && (
           <p className="rounded-2xl bg-white p-8 text-center text-slate-500">
-            Todavía no hay torneos. Importa el PDF con el horario de salidas o crea uno vacío.
+            {ver === 'salidas'
+              ? 'Todavía no hay días de salidas normales. Pulsa «Salidas normales de hoy» para empezar.'
+              : 'Todavía no hay torneos. Importa el PDF con el horario de salidas o crea uno vacío.'}
           </p>
         )}
 
         <ul className="space-y-3">
-          {torneos.map((t) => {
+          {visibles.map((t) => {
             const esElEnUso = t.id === enUso?.id;
+            const salidas = esSalidas(t);
+            // Unas salidas de otro día ya no se usan para apuntar: solo se consultan.
+            const sePuedeUsar = !salidas || t.fecha === hoy;
             return (
               <li
                 key={t.id}
@@ -96,7 +136,9 @@ export function Torneos() {
                     <h2 className="text-lg font-bold text-slate-900">{t.nombre}</h2>
                     <p className="text-sm text-slate-600">{fechaLarga(t.fecha)}</p>
                     <p className="text-sm text-slate-500">
-                      {t.organizador ? (
+                      {salidas ? (
+                        'Juego normal (sin torneo) · '
+                      ) : t.organizador ? (
                         <>
                           Organiza <strong className="text-slate-700">{t.organizador}</strong> ·{' '}
                         </>
@@ -107,6 +149,13 @@ export function Torneos() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        salidas ? 'bg-sky-100 text-sky-900' : 'bg-campo-100 text-campo-900'
+                      }`}
+                    >
+                      {tipoDeJornada(t)}
+                    </span>
                     {esElEnUso && (
                       <span className="rounded-full bg-campo-700 px-2.5 py-0.5 text-xs font-bold text-white">En uso</span>
                     )}
@@ -120,13 +169,13 @@ export function Torneos() {
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {!esElEnUso && (
+                  {!esElEnUso && sePuedeUsar && (
                     <button
                       type="button"
                       onClick={() => usar(t, '/oficina')}
                       className="min-h-10 rounded-lg bg-campo-700 px-3 text-sm font-bold text-white hover:bg-campo-800"
                     >
-                      Usar este torneo
+                      {salidas ? 'Usar estas salidas' : 'Usar este torneo'}
                     </button>
                   )}
                   <Link
@@ -152,7 +201,7 @@ export function Torneos() {
                     }
                     className="min-h-10 rounded-lg border border-slate-300 px-3 text-sm font-semibold hover:bg-slate-50"
                   >
-                    {t.cerrado_en ? 'Reabrir' : 'Cerrar torneo'}
+                    {t.cerrado_en ? 'Reabrir' : salidas ? 'Cerrar día' : 'Cerrar torneo'}
                   </button>
                   <button
                     type="button"
@@ -168,8 +217,8 @@ export function Torneos() {
         </ul>
 
         <p className="text-center text-xs text-slate-500">
-          Cada torneo guarda sus partidas, jugadores, alquileres, avistamientos y observaciones. Los dispositivos usan el torneo
-          abierto más reciente salvo que elijas otro.
+          Cada torneo y cada día de salidas normales guarda sus partidas, jugadores, alquileres, avistamientos y observaciones.
+          Los dispositivos usan el torneo abierto de hoy (o las salidas de hoy) salvo que elijas otro.
         </p>
       </main>
     </div>

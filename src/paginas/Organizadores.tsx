@@ -20,6 +20,7 @@ import {
 } from '../lib/informes';
 import { clasificarRetraso, textoRetraso } from '../lib/ritmo';
 import { fechaLarga } from '../lib/textos';
+import { esSalidas } from '../lib/jornadas';
 
 /** Con menos partidas medidas que esto, la comparación es poco fiable. */
 const MINIMO_PARTIDAS_FIABLE = 10;
@@ -58,10 +59,13 @@ export function Organizadores() {
     return compararOrganizadores(elegidos.map((torneo) => ({ torneo, partidas: partidas.filter((p) => p.torneo_id === torneo.id) })));
   }, [partidas, elegidos]);
 
-  const conDatos = ranking.filter((o) => o.minutosPorHoyo !== null);
+  // Las salidas normales no son un organizador: se enseñan aparte, como referencia.
+  const referencia = ranking.find((o) => o.referencia);
+  const organizadores = ranking.filter((o) => !o.referencia);
+  const conDatos = organizadores.filter((o) => o.minutosPorHoyo !== null);
   const masRapido = conDatos[0];
   const masLento = conDatos.length > 1 ? conDatos[conDatos.length - 1] : undefined;
-  const sinOrganizador = elegidos.filter((t) => !t.organizador.trim()).length;
+  const sinOrganizador = elegidos.filter((t) => !esSalidas(t) && !t.organizador.trim()).length;
 
   return (
     <div className="min-h-dvh pb-10">
@@ -71,7 +75,7 @@ export function Organizadores() {
           <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Informe de ritmo por organizador · sin nombres</p>
           <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">¿Qué organizador juega más rápido?</h1>
           <p className="text-sm text-slate-600">
-            {elegidos.length} torneos
+            {elegidos.filter((t) => !esSalidas(t)).length} torneos y {elegidos.filter(esSalidas).length} días de salidas normales
             {desde || hasta ? ` (${desde ? `desde ${desde}` : ''}${desde && hasta ? ' ' : ''}${hasta ? `hasta ${hasta}` : ''})` : ''} ·
             objetivo {textoRitmo(OBJETIVO_MIN_HOYO)}
           </p>
@@ -126,12 +130,24 @@ export function Organizadores() {
           </div>
         )}
 
-        {ranking.length > 0 && (
-          <Seccion titulo="Ranking (del más rápido al más lento)">
+        {organizadores.length > 0 && (
+          <Seccion titulo="Ranking de organizadores (del más rápido al más lento)">
             <ol className="space-y-3">
-              {ranking.map((o, i) => (
-                <FilaOrganizador key={o.nombre} o={o} puesto={o.minutosPorHoyo === null ? null : i + 1} />
+              {organizadores.map((o, i) => (
+                <FilaOrganizador key={o.nombre} o={o} puesto={o.minutosPorHoyo === null ? null : i + 1} referencia={referencia} />
               ))}
+            </ol>
+          </Seccion>
+        )}
+
+        {referencia && (
+          <Seccion titulo="Referencia: un día de juego normal">
+            <p className="mb-2 text-sm text-slate-600">
+              Así se juega en las salidas normales (sin torneo). Sirve para saber si un organizador va más rápido o más lento que
+              el juego habitual del campo.
+            </p>
+            <ol>
+              <FilaOrganizador o={referencia} puesto={null} />
             </ol>
           </Seccion>
         )}
@@ -160,8 +176,22 @@ function Destacado({ titulo, organizador, tono }: { titulo: string; organizador:
   );
 }
 
-function FilaOrganizador({ o, puesto }: { o: ResumenOrganizador; puesto: number | null }) {
+function FilaOrganizador({
+  o,
+  puesto,
+  referencia,
+}: {
+  o: ResumenOrganizador;
+  puesto: number | null;
+  /** El juego normal, para decir cuánto más rápido o lento va este organizador. */
+  referencia?: ResumenOrganizador;
+}) {
   const colorRitmo = estiloDe(estadoDeRitmo(o.minutosPorHoyo)).texto;
+  // Solo se compara con el juego normal si de este hay suficientes partidas medidas.
+  const frenteANormal =
+    referencia && referencia.partidasConRitmo >= MINIMO_PARTIDAS_FIABLE && referencia.duracionMedia !== null && o.duracionMedia !== null
+      ? Math.round(o.duracionMedia - referencia.duracionMedia)
+      : null;
   return (
     <li className="salto-evitar rounded-xl border border-slate-200 p-3">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -171,6 +201,13 @@ function FilaOrganizador({ o, puesto }: { o: ResumenOrganizador; puesto: number 
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">Pocos datos</span>
         )}
       </div>
+      {frenteANormal !== null && (
+        <p className="mt-1 text-sm text-slate-600">
+          {frenteANormal === 0
+            ? 'Su vuelta dura lo mismo que un día normal.'
+            : `Su vuelta dura ${Math.abs(frenteANormal)} min ${frenteANormal > 0 ? 'más' : 'menos'} que un día normal.`}
+        </p>
+      )}
       <dl className="cifras mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4 lg:grid-cols-7">
         <Medida etiqueta="Ritmo medio" valor={textoRitmo(o.minutosPorHoyo)} color={colorRitmo} />
         <Medida etiqueta="Vuelta media" valor={textoDuracion(o.duracionMedia)} color={colorRitmo} />
@@ -180,12 +217,14 @@ function FilaOrganizador({ o, puesto }: { o: ResumenOrganizador; puesto: number 
           color={o.retrasoMedioFinal === null ? undefined : estiloDe(clasificarRetraso(o.retrasoMedioFinal)).texto}
         />
         <Medida etiqueta="% en rojo" valor={o.porcentajeRojo === null ? '—' : `${Math.round(o.porcentajeRojo)} %`} />
-        <Medida etiqueta="Torneos" valor={String(o.torneos.length)} />
+        <Medida etiqueta={o.referencia ? 'Días' : 'Torneos'} valor={String(o.torneos.length)} />
         <Medida etiqueta="Partidas (medidas)" valor={`${o.numPartidas} (${o.partidasConRitmo})`} />
         <Medida etiqueta="Avisadas" valor={String(o.avisadas)} />
       </dl>
       <details className="mt-2">
-        <summary className="no-imprimir cursor-pointer text-sm font-semibold text-campo-700">Ver sus torneos</summary>
+        <summary className="no-imprimir cursor-pointer text-sm font-semibold text-campo-700">
+          {o.referencia ? 'Ver los días' : 'Ver sus torneos'}
+        </summary>
         <ul className="mt-2 divide-y divide-slate-100 text-sm">
           {o.torneos.map(({ torneo, resumen }) => (
             <li key={torneo.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">

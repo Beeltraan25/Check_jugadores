@@ -190,8 +190,10 @@ export function csvOrganizadores(resumenes: ResumenOrganizador[]): string {
     'Puesto', 'Organizador', 'Torneos', 'Partidas', 'Partidas con ritmo', 'Ritmo medio (min/hoyo)',
     'Duración media (min)', 'Retraso final medio (min)', '% partidas en rojo', 'Partidas avisadas',
   ];
-  const filas = resumenes.map((o, i) => [
-    o.minutosPorHoyo === null ? '' : i + 1,
+  // El puesto es solo entre organizadores: el juego normal va como referencia, sin puesto.
+  const organizadores = resumenes.filter((o) => !o.referencia);
+  const filas = resumenes.map((o) => [
+    o.referencia ? 'Referencia' : o.minutosPorHoyo === null ? '' : organizadores.indexOf(o) + 1,
     o.nombre,
     o.torneos.length,
     o.numPartidas,

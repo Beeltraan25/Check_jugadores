@@ -66,8 +66,12 @@ const PARTICULAS = new Set(['de', 'del', 'la', 'las', 'los', 'da', 'das', 'do', 
 /** Título legible: el nombre de la partida o, si no tiene, los apellidos de los jugadores. */
 export function tituloPartida(p: Partida): string {
   if (p.nombre.trim()) return p.nombre.trim();
-  const apellidos = p.jugadores.map((j) => apellidoPrincipal(j.nombre)).filter(Boolean);
-  return apellidos.join(' · ') || 'Partida sin nombre';
+  // Los jugadores apuntados sin nombre ("Jugador 2") no cuentan para el título.
+  const conNombre = p.jugadores.filter((j) => !/^jugador \d+$/i.test(j.nombre.trim()));
+  const sinNombre = p.jugadores.length - conNombre.length;
+  const apellidos = conNombre.map((j) => apellidoPrincipal(j.nombre)).filter(Boolean);
+  if (apellidos.length === 0) return p.jugadores.length ? 'Sin nombres' : 'Partida sin jugadores';
+  return apellidos.join(' · ') + (sinNombre ? ` +${sinNombre}` : '');
 }
 
 /** Texto para buscar una partida por nombre, jugador o nº de carro/buggy. */
@@ -103,4 +107,24 @@ export function avisoAlquilerOcupado(
       p.jugadores.some((j) => j.alquiler?.tipo === tipo && j.alquiler.numero === numero),
   );
   return otra ? `${NOMBRE_ALQUILER[tipo]} nº ${numero} ya lo lleva la partida de las ${etiquetaPartida(otra)}.` : null;
+}
+
+/** Minutos que lleva una partida sin que nadie la vea (desde su última vista o, si no hay, desde que salió). */
+export function minutosSinVer(p: Partida, ahora: Date): number {
+  const desde = ultimoAvistamiento(p)?.visto_en ?? p.hora_salida;
+  return (ahora.getTime() - new Date(desde).getTime()) / 60_000;
+}
+
+/**
+ * Orden "más urgentes" para el Marshal: primero las partidas en rojo (la más retrasada antes),
+ * después las que llevan más tiempo sin ver. Las que aún no han salido o ya terminaron, al final.
+ */
+export function compararUrgencia(a: Partida, b: Partida, ahora: Date): number {
+  const ra = resumirPartida(a, ahora);
+  const rb = resumirPartida(b, ahora);
+  const grupo = (r: ResumenPartida) => (r.fase !== 'en_juego' ? (r.fase === 'pendiente' ? 2 : 3) : r.estado === 'retrasado' ? 0 : 1);
+  if (grupo(ra) !== grupo(rb)) return grupo(ra) - grupo(rb);
+  if (grupo(ra) === 0) return (rb.ultimo?.retraso_min ?? 0) - (ra.ultimo?.retraso_min ?? 0);
+  if (grupo(ra) === 1) return minutosSinVer(b, ahora) - minutosSinVer(a, ahora);
+  return a.hora_salida.localeCompare(b.hora_salida);
 }

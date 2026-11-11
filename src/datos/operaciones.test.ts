@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarOperacion, type Estado, type Operacion } from './operaciones';
+import { aplicarOperacion, normalizarPartidas, type Estado, type Operacion } from './operaciones';
 import type { Avistamiento, Partida, Torneo } from './tipos';
 
 const torneo: Torneo = {
@@ -73,6 +73,28 @@ describe('aplicarOperacion: partidas', () => {
   it('no toca el estado original (inmutable)', () => {
     aplicarOperacion(inicial, { tipo: 'guardar_observaciones', partidaId: 'p1', texto: 'Buscando bola' });
     expect(inicial.partidas[0].observaciones).toBe('');
+  });
+});
+
+describe('corregir la salida de una partida', () => {
+  it('al cambiar la hora de salida se recalculan los retrasos de sus vistas', () => {
+    // Salida 10:00 (hora local), vistos en el green del 1 a las 10:25 → 10 min tarde (ámbar).
+    const salida = new Date('2026-05-10T10:00:00');
+    const vista: Avistamiento = { ...avistamiento, id: 'v', hoyo: 1, posicion: 'green', visto_en: new Date('2026-05-10T10:25:00').toISOString() };
+    const estado: Estado = { torneos: [torneo], partidas: [{ ...partida, hora_salida: salida.toISOString(), avistamientos: [vista] }] };
+
+    const [antes] = normalizarPartidas(estado.partidas);
+    expect(antes.avistamientos[0].retraso_min).toBe(10);
+    expect(antes.avistamientos[0].estado).toBe('aviso');
+
+    // En realidad salieron a las 10:10: ya no van tarde.
+    const corregido = aplicarOperacion(estado, {
+      tipo: 'actualizar_partida',
+      partidaId: 'p1',
+      cambios: { hora_salida: new Date('2026-05-10T10:10:00').toISOString() },
+    });
+    expect(corregido.partidas[0].avistamientos[0].retraso_min).toBe(0);
+    expect(corregido.partidas[0].avistamientos[0].estado).toBe('en_tiempo');
   });
 });
 

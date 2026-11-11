@@ -160,6 +160,19 @@ describe('compararOrganizadores', () => {
   });
 });
 
+describe('salidas normales en la comparativa', () => {
+  it('no son un organizador: van aparte, como referencia', () => {
+    const salidas = { ...torneo('s', ''), id: '5a11da50-0000-4000-8000-000020261101' };
+    const ranking = compararOrganizadores([
+      { torneo: salidas, partidas: [partida('s1', '09:00', [vista('10:05', 5, 'tee', 3)])] },
+      { torneo: torneo('a', 'Green Events'), partidas: [partida('a1', '09:00', [vista('10:15', 5, 'tee', 10)])] },
+    ]);
+    const referencia = ranking.find((o) => o.referencia);
+    expect(referencia?.nombre).toBe('Salidas normales (sin torneo)');
+    expect(ranking.filter((o) => !o.referencia).map((o) => o.nombre)).toEqual(['Green Events']);
+  });
+});
+
 describe('formatos', () => {
   it('duración y ritmo', () => {
     expect(textoDuracion(291)).toBe('4 h 51 min');

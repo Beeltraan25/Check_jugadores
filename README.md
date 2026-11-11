@@ -58,6 +58,25 @@ Cada torneo guarda todo lo que se apunta durante el juego. Desde **Torneos** pue
 
 Si el PDF es una foto escaneada (sin texto), no se puede leer: pega el texto en el recuadro de la misma pantalla o crea el torneo vacío y añade las partidas a mano.
 
+## Salidas normales (días sin torneo)
+
+Para medir también el ritmo del juego de cada día:
+
+- En **Inicio** (o en *Torneos y salidas*) pulsa **Salidas normales de hoy**. Se crea la jornada del día (una por día) y pasa a ser lo que se usa en ese dispositivo. Si dos dispositivos lo pulsan a la vez, comparten la misma.
+- Cada partida se apunta en dos toques: **+ Salida** (también desde el móvil del Marshal) y **Apuntar salida**. La hora es la actual, el tee el 1 y el nº de jugadores se elige con un toque; los nombres son opcionales.
+- También se puede **importar el PDF** del horario de un día eligiendo «Salidas normales de un día».
+- Si el mismo día hay torneo y juego normal, en Inicio se cambia de uno a otro con un botón.
+- Las salidas tienen su **informe de ritmo** igual que un torneo y, en *Comparar organizadores*, aparecen aparte como **referencia** («un día de juego normal») para saber si un organizador juega más rápido o más lento que lo habitual.
+
+No hay que cambiar nada en la base de datos: la jornada de salidas se guarda como un torneo con un identificador fijo para cada fecha (ver `src/lib/jornadas.ts`).
+
+## Otras ayudas del día a día
+
+- **Aviso de partida en rojo (oficina):** cuando una vista nueva pone a una partida con 15 min o más de retraso, sale un aviso en pantalla con el botón *Ver partida*. Con el botón 🔔 de la cabecera, además suena.
+- **Más urgentes primero (Marshal):** la lista se puede ordenar con las partidas rojas arriba y, después, las que llevan más tiempo sin que nadie las vea.
+- **Corregir hora o tee:** en la ficha de cualquier partida. Los retrasos de las vistas ya registradas se recalculan solos.
+- **Versión nueva:** si se publica una actualización con la app abierta, aparece un aviso con el botón *Actualizar*.
+
 ## Informes de ritmo sin nombres y comparativa de organizadores
 
 Cada torneo tiene un **organizador** (empresa, agencia, club…). Se indica al importar el PDF o al crear el torneo, y se puede cambiar después desde la lista de torneos o desde cualquier informe. La app sugiere los organizadores ya usados para que se escriban siempre igual.

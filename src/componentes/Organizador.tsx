@@ -2,6 +2,7 @@
 import { useId, useState } from 'react';
 import { useDatos } from '../datos/DatosProvider';
 import type { Torneo } from '../datos/tipos';
+import { esSalidas } from '../lib/jornadas';
 
 /** Organizadores ya usados, sin repetir, para sugerirlos y que se escriban siempre igual. */
 function useOrganizadores(): string[] {
@@ -50,6 +51,9 @@ export function EditorOrganizador({ torneo }: { torneo: Torneo }) {
   const { ejecutar } = useDatos();
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(torneo.organizador);
+
+  // Las salidas normales no tienen organizador.
+  if (esSalidas(torneo)) return <p className="text-sm text-slate-600">Salidas normales (juego sin torneo)</p>;
 
   if (!editando) {
     return (

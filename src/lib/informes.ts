@@ -10,13 +10,14 @@
  *   Si la partida se marcó como terminada, la duración es la real (terminada − salida).
  */
 import type { Avistamiento, Partida, Torneo } from '../datos/tipos';
+import { esSalidas } from './jornadas';
 import { CONFIG_RITMO, clasificarRetraso, duracionVueltaMin, minutoInicioHoyo, type EstadoRitmo } from './ritmo';
 
 const TOTAL_HOYOS = CONFIG_RITMO.minutosPorHoyo.length;
 /** Minutos por hoyo del objetivo (15). */
 export const OBJETIVO_MIN_HOYO = duracionVueltaMin() / TOTAL_HOYOS;
-/** Por debajo de esto (unos 2 hoyos jugados) una sola vista no basta para estimar el ritmo. */
-const MINUTOS_IDEALES_MINIMOS = 25;
+/** Por debajo de esto (3 hoyos jugados) la vista es demasiado temprana para estimar el ritmo de la vuelta. */
+const MINUTOS_IDEALES_MINIMOS = 45;
 
 const MS_MINUTO = 60_000;
 const media = (valores: number[]) => (valores.length ? valores.reduce((s, v) => s + v, 0) / valores.length : null);
@@ -196,6 +197,8 @@ export function resumirRitmoTorneo(partidas: Partida[]): ResumenRitmoTorneo {
 // --- Comparativa de organizadores -------------------------------------------------
 
 export const SIN_ORGANIZADOR = 'Sin organizador';
+/** Nombre con el que se agrupan los días de juego normal (sin torneo) en la comparativa. */
+export const SALIDAS_NORMALES = 'Salidas normales (sin torneo)';
 
 /** Para agrupar "Golf Events", "golf events " y "Gólf Events" como el mismo organizador. */
 const claveOrganizador = (nombre: string) =>
@@ -203,6 +206,8 @@ const claveOrganizador = (nombre: string) =>
 
 export interface ResumenOrganizador {
   nombre: string;
+  /** true = no es un organizador: es el juego normal, que sirve de referencia para comparar. */
+  referencia: boolean;
   torneos: { torneo: Torneo; resumen: ResumenRitmoTorneo }[];
   numPartidas: number;
   partidasConRitmo: number;
@@ -218,7 +223,7 @@ export interface ResumenOrganizador {
 export function compararOrganizadores(datos: { torneo: Torneo; partidas: Partida[] }[]): ResumenOrganizador[] {
   const grupos = new Map<string, { nombres: string[]; torneos: { torneo: Torneo; resumen: ResumenRitmoTorneo }[] }>();
   for (const { torneo, partidas } of datos) {
-    const nombre = torneo.organizador.trim() || SIN_ORGANIZADOR;
+    const nombre = esSalidas(torneo) ? SALIDAS_NORMALES : torneo.organizador.trim() || SIN_ORGANIZADOR;
     const clave = claveOrganizador(nombre);
     const grupo = grupos.get(clave) ?? { nombres: [], torneos: [] };
     grupo.nombres.push(nombre);
@@ -234,6 +239,7 @@ export function compararOrganizadores(datos: { torneo: Torneo; partidas: Partida
     const nombre = [...nombres].sort((a, b) => nombres.filter((n) => n === b).length - nombres.filter((n) => n === a).length)[0];
     return {
       nombre,
+      referencia: torneos.every((t) => esSalidas(t.torneo)),
       torneos: [...torneos].sort((a, b) => b.torneo.fecha.localeCompare(a.torneo.fecha)),
       numPartidas: partidas.length,
       partidasConRitmo: conRitmo.length,

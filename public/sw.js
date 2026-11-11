@@ -8,7 +8,7 @@
  *  - Iconos, mapa y demás: de la copia, y se actualiza por detrás.
  *  - Los datos (Supabase) no pasan por aquí: los gestiona la propia app con su cola offline.
  */
-const CACHE = 'ritmo-v2';
+const CACHE = 'ritmo-v3';
 // Los archivos guardados sirven para cualquier petición de la misma URL (aunque cambien
 // cabeceras como Origin): son estáticos.
 const BUSQUEDA = { ignoreVary: true };
@@ -45,6 +45,8 @@ self.addEventListener('fetch', (evento) => {
   if (peticion.method !== 'GET') return;
   const url = new URL(peticion.url);
   if (url.origin !== self.location.origin) return;
+  // La comprobación de "¿hay versión nueva?" debe ir siempre a la red, sin copia.
+  if (url.searchParams.has('comprobar-version')) return;
 
   if (peticion.mode === 'navigate') {
     evento.respondWith(
