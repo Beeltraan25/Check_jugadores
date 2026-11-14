@@ -56,3 +56,17 @@ export function resolverJornada(torneos: Torneo[], elegido: string | null, hoy: 
     null
   );
 }
+
+/** Nombre sin mayúsculas, tildes ni espacios de más, para comparar torneos. */
+const nombreComparable = (nombre: string) =>
+  nombre.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+/** Torneos ya guardados que parecen el mismo: misma fecha y mismo nombre (p. ej. un PDF importado dos veces). */
+export function torneosRepetidos(torneos: Torneo[], nombre: string, fecha: string): Torneo[] {
+  const buscado = nombreComparable(nombre);
+  return torneos.filter((t) => !esSalidas(t) && t.fecha === fecha && nombreComparable(t.nombre) === buscado);
+}
+
+/** Torneos (no salidas) abiertos en un día: si hay más de uno, cada dispositivo podría estar en uno distinto. */
+export const torneosAbiertosDelDia = (torneos: Torneo[], fecha: string) =>
+  torneos.filter((t) => !esSalidas(t) && !t.cerrado_en && t.fecha === fecha);

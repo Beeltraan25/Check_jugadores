@@ -82,10 +82,10 @@ export function crearRepositorioDemo(): Repositorio {
     modo: 'demo',
     async listarTorneos() {
       const { torneos, partidas } = leer();
-      return ordenarTorneos(torneos).map((t) => ({
-        ...t,
-        num_partidas: partidas.filter((p) => p.torneo_id === t.id).length,
-      }));
+      return ordenarTorneos(torneos).map((t) => {
+        const suyas = partidas.filter((p) => p.torneo_id === t.id);
+        return { ...t, num_partidas: suyas.length, num_vistas: suyas.reduce((n, p) => n + p.avistamientos.length, 0) };
+      });
     },
     async cargarTorneo(torneoId) {
       return normalizarPartidas(leer().partidas.filter((p) => p.torneo_id === torneoId));

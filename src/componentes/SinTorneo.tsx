@@ -3,7 +3,8 @@ import { useDatos } from '../datos/DatosProvider';
 import type { Torneo } from '../datos/tipos';
 import { useAhora } from '../hooks/useAhora';
 import { fechaLocal } from '../lib/hora';
-import { fechaLarga } from '../lib/textos';
+import { cuantas, fechaLarga } from '../lib/textos';
+import { torneosAbiertosDelDia } from '../lib/jornadas';
 
 /** Aviso cuando todavía no hay ningún torneo ni día de salidas con el que trabajar. */
 export function SinTorneo() {
@@ -63,6 +64,55 @@ export function AvisoFechaTorneo({ torneo }: { torneo: Torneo | null }) {
         {pasado ? 'elige el torneo de hoy' : 'Cambiar de torneo'}
       </Link>
       .
+    </div>
+  );
+}
+
+/**
+ * Aviso si hoy hay más de un torneo abierto. Cada dispositivo trabaja en el que tenga elegido,
+ * así que si el Marshal está en uno y la oficina en otro, la oficina no verá lo que apunta el
+ * Marshal (pasa, por ejemplo, si el mismo PDF se importó dos veces).
+ */
+export function AvisoVariosTorneos() {
+  const { torneos, torneo, elegirTorneo, numPartidas, numVistas } = useDatos();
+  const hoy = fechaLocal(useAhora(60_000));
+  const deHoy = torneosAbiertosDelDia(torneos, hoy);
+  if (deHoy.length < 2) return null;
+  return (
+    <div role="alert" className="border-b border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+      <div className="mx-auto max-w-5xl space-y-2">
+        <p>
+          <strong>Hoy hay {deHoy.length} torneos abiertos.</strong> El Marshal y la oficina tienen que estar en el mismo para
+          verse. Si es el mismo torneo importado dos veces, usa el que tiene vistas y elimina el otro en{' '}
+          <Link to="/torneos" className="font-semibold underline">
+            Torneos
+          </Link>
+          .
+        </p>
+        <ul className="flex flex-wrap gap-2">
+          {deHoy.map((t) => {
+            const enUso = t.id === torneo?.id;
+            return (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  disabled={enUso}
+                  onClick={() => elegirTorneo(t.id)}
+                  className={`min-h-11 rounded-xl border px-3 text-left ${
+                    enUso ? 'border-campo-700 bg-campo-700 text-white' : 'border-amber-400 bg-white hover:bg-amber-100'
+                  }`}
+                >
+                  <span className="font-semibold">{t.nombre}</span>
+                  {t.organizador && <span> · {t.organizador}</span>}
+                  <span className="block text-xs">
+                    {cuantas(numPartidas(t.id), 'partida')} · {cuantas(numVistas(t.id), 'vista')} · {enUso ? 'en uso aquí' : 'pulsa para usar este'}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </div>
   );
 }

@@ -41,6 +41,8 @@ Para probarlo en el móvil dentro de tu red WiFi: `npm run dev -- --host` y abre
 
 6. Reinicia `npm run dev`. Ahora la app pide iniciar sesión y todo se sincroniza en tiempo real entre todos los dispositivos.
 
+> **Si un dispositivo no ve lo que apunta otro**, casi siempre es que están en torneos distintos (por ejemplo, el mismo PDF importado dos veces). La app lo avisa: al importar un torneo que ya existe (mismo nombre y día) ofrece usar el existente, y si hoy hay varios torneos abiertos sale un aviso en Caddy Master y Marshal para cambiar de uno a otro. En **Torneos** cada uno muestra sus partidas y vistas: conserva el que tenga vistas y elimina el otro.
+
 **La sesión se cierra al cerrar la web** (o la app instalada): al volver a abrirla hay que poner email y contraseña. Recargar la página no la cierra. Lo que el Marshal haya apuntado sin cobertura no se pierde: se envía al volver a entrar.
 
 > La clave pública puede ir en la web sin problema: la seguridad la ponen las políticas RLS del `schema.sql` (solo el personal con sesión iniciada puede leer y escribir). **Nunca** pongas la clave `service_role` en el frontend.

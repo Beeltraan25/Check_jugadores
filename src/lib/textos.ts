@@ -19,3 +19,6 @@ export function fechaLarga(fecha: string): string {
   });
   return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
+
+/** "1 vista", "3 vistas", "1 partida"… */
+export const cuantas = (n: number, singular: string, plural = `${singular}s`) => `${n} ${n === 1 ? singular : plural}`;

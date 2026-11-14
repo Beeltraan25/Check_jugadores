@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Torneo } from '../datos/tipos';
-import { esSalidas, idSalidasDelDia, jornadaDeSalidas, resolverJornada } from './jornadas';
+import { esSalidas, idSalidasDelDia, jornadaDeSalidas, resolverJornada, torneosAbiertosDelDia, torneosRepetidos } from './jornadas';
 
 const torneo = (id: string, fecha: string, cerrado = false): Torneo => ({
   id,
@@ -52,5 +52,23 @@ describe('resolverJornada (qué se usa en un dispositivo)', () => {
   it('si todo está cerrado, el torneo más reciente; sin nada, null', () => {
     expect(resolverJornada([salidasAyer, torneo('cerrado', '2026-11-05', true)], null, HOY)?.id).toBe('cerrado');
     expect(resolverJornada([], null, HOY)).toBeNull();
+  });
+});
+
+describe('torneos repetidos', () => {
+  const tgea = { ...torneo('a', HOY), nombre: 'Torneo Tgea 14 11 2026' };
+  const otro = { ...torneo('b', HOY), nombre: 'Copa Corporate' };
+  const tgeaAyer = { ...torneo('c', '2026-11-10'), nombre: 'Torneo Tgea 14 11 2026' };
+
+  it('detecta el mismo nombre y fecha aunque cambien mayúsculas, tildes o espacios', () => {
+    const lista = [tgea, otro, tgeaAyer, salidasHoy];
+    expect(torneosRepetidos(lista, '  torneo  TGEA 14 11 2026 ', HOY)).toEqual([tgea]);
+    expect(torneosRepetidos([{ ...otro, nombre: 'Copa Él' }], 'copa el', HOY)).toHaveLength(1);
+    expect(torneosRepetidos(lista, 'Otro torneo', HOY)).toEqual([]);
+  });
+
+  it('lista solo los torneos abiertos del día (sin salidas normales)', () => {
+    const cerrado = { ...torneo('d', HOY, true), nombre: 'Cerrado' };
+    expect(torneosAbiertosDelDia([tgea, otro, tgeaAyer, salidasHoy, cerrado], HOY)).toEqual([tgea, otro]);
   });
 });

@@ -11,6 +11,8 @@ export type EstadoConexion = 'demo' | 'conectando' | 'en_directo' | 'sin_conexio
 /** Torneo con un pequeño resumen para listarlo sin cargar todas sus partidas. */
 export interface TorneoConResumen extends Torneo {
   num_partidas: number;
+  /** Vistas del Marshal apuntadas en todas sus partidas. */
+  num_vistas: number;
 }
 
 export interface Repositorio {

@@ -7,7 +7,7 @@ import { Cabecera } from '../componentes/basicos';
 import { Indicador } from '../componentes/Indicador';
 import { LeyendaMapa, MapaCampo } from '../componentes/MapaCampo';
 import { TarjetaPartida } from '../componentes/TarjetaPartida';
-import { AvisoFechaTorneo, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
+import { AvisoFechaTorneo, AvisoVariosTorneos, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
 import { useDatos } from '../datos/DatosProvider';
 import { useAhora } from '../hooks/useAhora';
 import {
@@ -104,6 +104,7 @@ export function MarshalLista() {
         }
       />
       <AvisoFechaTorneo torneo={torneo} />
+      <AvisoVariosTorneos />
       {!torneo && !cargando ? (
         <div className="px-4 py-10">
           <SinTorneo />

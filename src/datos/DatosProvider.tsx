@@ -64,6 +64,8 @@ interface ContextoDatos {
   torneos: Torneo[];
   /** Nº de partidas de cada torneo. */
   numPartidas: (torneoId: string) => number;
+  /** Nº de vistas del Marshal apuntadas en cada torneo. */
+  numVistas: (torneoId: string) => number;
   /** Torneo en uso en este dispositivo (null si no hay ninguno). */
   torneo: Torneo | null;
   elegirTorneo: (id: string) => void;
@@ -99,7 +101,7 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
     partidas: [],
     torneoCargado: null,
   });
-  const [conteos, setConteos] = useState<Record<string, number>>({});
+  const [conteos, setConteos] = useState<Record<string, { partidas: number; vistas: number }>>({});
   const [elegido, setElegido] = useState<string | null>(leerTorneoElegido);
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
@@ -119,7 +121,7 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
     const inicio = Date.now();
     try {
       const lista = await repo.listarTorneos();
-      const torneos = lista.map(({ num_partidas: _n, ...t }) => t);
+      const torneos = lista.map(({ num_partidas: _n, num_vistas: _v, ...t }) => t);
       // Se decide qué torneo cargar teniendo en cuenta también los creados sin conexión.
       const conLocales = repo.operacionesLocales().reduce(aplicarOperacion, { torneos, partidas: [] }).torneos;
       const torneo = resolverJornada(conLocales, elegidoRef.current, hoyRef.current);
@@ -127,7 +129,7 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
       if (peticion !== ultimaPeticion.current) return; // llegó una respuesta más nueva
       repo.confirmarHasta(inicio);
       setServidor({ torneos, partidas, torneoCargado: torneo?.id ?? null });
-      setConteos(Object.fromEntries(lista.map((t) => [t.id, t.num_partidas])));
+      setConteos(Object.fromEntries(lista.map((t) => [t.id, { partidas: t.num_partidas, vistas: t.num_vistas ?? 0 }])));
       setErrorCarga(null);
       marcarRevision();
     } catch (error) {
@@ -150,12 +152,26 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
       if (evento.tipo === 'error') setAviso(evento.mensaje);
       refrescar();
     });
+    // Red de seguridad por si se pierde algún aviso en tiempo real (móvil que se duerme, wifi
+    // que cambia…): con la pantalla visible se vuelve a leer todo cada 30 s, y al instante
+    // cuando la app vuelve a primer plano o recupera la conexión.
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') recargarPronto();
+    };
+    const periodico = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) void cargar();
+    }, 30_000);
     window.addEventListener('focus', recargarPronto);
+    window.addEventListener('online', recargarPronto);
+    document.addEventListener('visibilitychange', alVolver);
     return () => {
       window.clearTimeout(temporizador);
+      window.clearInterval(periodico);
       dejarDeEscuchar();
       dejarEstado();
       window.removeEventListener('focus', recargarPronto);
+      window.removeEventListener('online', recargarPronto);
+      document.removeEventListener('visibilitychange', alVolver);
     };
   }, [repo, cargar]);
 
@@ -201,7 +217,9 @@ export function DatosProvider({ usuario, children }: { usuario: string; children
 
   const valor: ContextoDatos = {
     torneos: vista.torneos,
-    numPartidas: (id) => (id === torneoId ? partidas.length : (conteos[id] ?? 0)),
+    numPartidas: (id) => (id === torneoId ? partidas.length : (conteos[id]?.partidas ?? 0)),
+    numVistas: (id) =>
+      id === torneoId ? partidas.reduce((n, p) => n + p.avistamientos.length, 0) : (conteos[id]?.vistas ?? 0),
     torneo,
     elegirTorneo: (id) => {
       guardarTorneoElegido(id);

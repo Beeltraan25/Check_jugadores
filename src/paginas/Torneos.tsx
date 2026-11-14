@@ -7,12 +7,12 @@ import { torneoDeEjemplo } from '../datos/demo';
 import type { Torneo } from '../datos/tipos';
 import { fechaLocal } from '../lib/hora';
 import { nuevoId } from '../lib/ids';
-import { fechaLarga } from '../lib/textos';
+import { cuantas, fechaLarga } from '../lib/textos';
 import { esSalidas, tipoDeJornada } from '../lib/jornadas';
 import { CampoOrganizador } from '../componentes/Organizador';
 
 export function Torneos() {
-  const { torneos, torneo: enUso, elegirTorneo, abrirSalidasDeHoy, numPartidas, ejecutar, cargando } = useDatos();
+  const { torneos, torneo: enUso, elegirTorneo, abrirSalidasDeHoy, numPartidas, numVistas, ejecutar, cargando } = useDatos();
   const [ver, setVer] = useState<'todo' | 'torneos' | 'salidas'>('todo');
   const hoy = fechaLocal();
   const visibles = torneos.filter((t) => ver === 'todo' || (ver === 'salidas') === esSalidas(t));
@@ -26,8 +26,11 @@ export function Torneos() {
 
   const eliminar = (t: Torneo) => {
     const n = numPartidas(t.id);
+    const vistas = numVistas(t.id);
     const ok = window.confirm(
-      `¿Eliminar "${t.nombre}" (${fechaLarga(t.fecha)})?\n\nSe borrarán sus ${n} partidas con todos sus avistamientos, alquileres y observaciones. No se puede deshacer.`,
+      `¿Eliminar "${t.nombre}" (${fechaLarga(t.fecha)})?\n\nSe borrarán sus ${n} partidas` +
+        (vistas ? ` y sus ${vistas} vistas del Marshal` : '') +
+        ', con sus alquileres y observaciones. No se puede deshacer.',
     );
     if (ok) void ejecutar({ tipo: 'eliminar_torneo', torneoId: t.id });
   };
@@ -145,7 +148,8 @@ export function Torneos() {
                       ) : (
                         <span className="text-amber-700">Sin organizador · </span>
                       )}
-                      {numPartidas(t.id)} partidas
+                      {cuantas(numPartidas(t.id), 'partida')} ·{' '}
+                      <span className={numVistas(t.id) ? 'font-semibold text-slate-700' : ''}>{cuantas(numVistas(t.id), 'vista')}</span>
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-1.5">

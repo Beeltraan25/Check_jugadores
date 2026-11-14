@@ -15,7 +15,7 @@ import { Indicador } from '../componentes/Indicador';
 import { AvisosDeRetraso } from '../componentes/AvisosDeRetraso';
 import { EditorSalida } from '../componentes/EditorSalida';
 import { esSalidas } from '../lib/jornadas';
-import { AvisoFechaTorneo, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
+import { AvisoFechaTorneo, AvisoVariosTorneos, SinTorneo, TituloTorneo } from '../componentes/SinTorneo';
 import { useDatos } from '../datos/DatosProvider';
 import type { Partida } from '../datos/tipos';
 import { useAhora } from '../hooks/useAhora';
@@ -114,6 +114,7 @@ export function Oficina() {
       />
 
       <AvisoFechaTorneo torneo={torneo} />
+      <AvisoVariosTorneos />
       {!torneo && !cargando ? (
         <div className="px-4 py-10">
           <SinTorneo />

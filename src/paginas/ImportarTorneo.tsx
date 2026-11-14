@@ -14,7 +14,8 @@ import { nuevoId } from '../lib/ids';
 import { interpretarHorario, type PartidaImportada } from '../lib/importar';
 import { leerLineasPdf } from '../lib/pdf';
 import { CampoOrganizador } from '../componentes/Organizador';
-import { jornadaDeSalidas } from '../lib/jornadas';
+import { jornadaDeSalidas, torneosRepetidos } from '../lib/jornadas';
+import { cuantas } from '../lib/textos';
 
 const MAX_JUGADORES = 4;
 
@@ -25,7 +26,7 @@ interface Fila extends PartidaImportada {
 const conClave = (p: PartidaImportada): Fila => ({ ...p, clave: nuevoId(), jugadores: [...p.jugadores] });
 
 export function ImportarTorneo() {
-  const { ejecutar, elegirTorneo } = useDatos();
+  const { ejecutar, elegirTorneo, torneos, numPartidas, numVistas } = useDatos();
   const navegar = useNavigate();
   const [nombre, setNombre] = useState('');
   const [organizador, setOrganizador] = useState('');
@@ -74,6 +75,14 @@ export function ImportarTorneo() {
 
   const filasValidas = (filas ?? []).filter((f) => /^\d{2}:\d{2}$/.test(f.hora));
   const totalJugadores = filasValidas.reduce((n, f) => n + f.jugadores.filter((j) => j.trim()).length, 0);
+
+  // ¿Ya se importó este horario (mismo nombre y día)? Así no acaba cada dispositivo en una copia.
+  const repetido = tipo === 'torneo' ? torneosRepetidos(torneos, nombre.trim() || `Torneo ${fecha}`, fecha)[0] : undefined;
+
+  const usarElQueExiste = (t: Torneo) => {
+    elegirTorneo(t.id);
+    navegar('/oficina');
+  };
 
   const guardar = () => {
     if (!filasValidas.length) return;
@@ -268,6 +277,21 @@ export function ImportarTorneo() {
 
       {filas && filasValidas.length > 0 && (
         <div className="margen-inferior-seguro fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 pt-3 backdrop-blur">
+          {repetido && (
+            <div role="alert" className="mx-auto mb-3 max-w-5xl rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+              <p>
+                <strong>Este torneo ya está guardado:</strong> «{repetido.nombre}», del mismo día, con {cuantas(numPartidas(repetido.id), 'partida')} y{' '}
+                {cuantas(numVistas(repetido.id), 'vista')}. Si lo guardas otra vez habrá dos copias y cada dispositivo podría usar una distinta.
+              </p>
+              <button
+                type="button"
+                onClick={() => usarElQueExiste(repetido)}
+                className="mt-2 min-h-11 rounded-xl bg-amber-600 px-4 font-bold text-white hover:bg-amber-700"
+              >
+                Usar el que ya existe
+              </button>
+            </div>
+          )}
           <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
             <p className="text-sm text-slate-600">
               <strong>{filasValidas.length}</strong> partidas · <strong>{totalJugadores}</strong> jugadores
@@ -277,7 +301,7 @@ export function ImportarTorneo() {
               onClick={guardar}
               className="min-h-12 rounded-xl bg-campo-700 px-6 font-bold text-white shadow hover:bg-campo-800"
             >
-              {tipo === 'salidas' ? 'Guardar las salidas' : 'Guardar torneo y usarlo'}
+              {tipo === 'salidas' ? 'Guardar las salidas' : repetido ? 'Guardar otra copia' : 'Guardar torneo y usarlo'}
             </button>
           </div>
         </div>

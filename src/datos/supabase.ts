@@ -105,7 +105,9 @@ function desdeFila(f: FilaPartida): Partida {
   };
 }
 
-function torneoDesdeFila(f: Torneo & { partidas?: { count: number }[] }): TorneoConResumen {
+type FilaTorneo = Torneo & { partidas?: { avistamientos?: { count: number }[] }[] };
+
+function torneoDesdeFila(f: FilaTorneo): TorneoConResumen {
   return {
     id: f.id,
     nombre: f.nombre,
@@ -114,7 +116,8 @@ function torneoDesdeFila(f: Torneo & { partidas?: { count: number }[] }): Torneo
     notas: f.notas ?? '',
     creado_en: iso(f.creado_en)!,
     cerrado_en: iso(f.cerrado_en),
-    num_partidas: f.partidas?.[0]?.count ?? 0,
+    num_partidas: f.partidas?.length ?? 0,
+    num_vistas: (f.partidas ?? []).reduce((n, p) => n + (p.avistamientos?.[0]?.count ?? 0), 0),
   };
 }
 
@@ -313,7 +316,7 @@ export function crearRepositorioSupabase(): Repositorio {
       }
       const { data, error, status } = await db
         .from('torneos')
-        .select('*, partidas(count)')
+        .select('*, partidas(id, avistamientos(count))')
         .order('fecha', { ascending: false })
         .order('creado_en', { ascending: false })
         .abortSignal(senalConLimite());
@@ -323,7 +326,7 @@ export function crearRepositorioSupabase(): Repositorio {
         cambiarConexion('sin_conexion');
         return copia;
       }
-      const torneos = (data as (Torneo & { partidas: { count: number }[] })[]).map(torneoDesdeFila);
+      const torneos = (data as FilaTorneo[]).map(torneoDesdeFila);
       guardarCopia((c) => ({ ...c, torneos }));
       return torneos;
     },
